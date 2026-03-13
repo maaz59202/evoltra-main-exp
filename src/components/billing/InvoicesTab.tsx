@@ -1,0 +1,229 @@
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Plus, MoreHorizontal, Send, CheckCircle, FileDown, Trash2, DollarSign, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
+import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import InvoiceStatusBadge from './InvoiceStatusBadge';
+import CreateInvoiceDialog from './CreateInvoiceDialog';
+
+interface InvoicesTabProps {
+  organizationId: string;
+}
+
+const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
+  const { invoices, isLoading, stats, createInvoice, updateInvoiceStatus, sendInvoiceReminder, deleteInvoice } = useInvoices(organizationId);
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const filteredInvoices = invoices?.filter((invoice: Invoice) => 
+    statusFilter === 'all' || invoice.status === statusFilter
+  );
+
+  const handleMarkPaid = (invoiceId: string) => {
+    updateInvoiceStatus.mutate({
+      invoiceId,
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+    });
+  };
+
+  const handleSendInvoice = (invoiceId: string, currentStatus: string) => {
+    const reminderType = currentStatus === 'draft' ? 'initial' : 
+                         currentStatus === 'overdue' ? 'overdue' : 'reminder';
+    
+    sendInvoiceReminder.mutate({ invoiceId, reminderType });
+    
+    // Update status to sent if it's a draft
+    if (currentStatus === 'draft') {
+      updateInvoiceStatus.mutate({ invoiceId, status: 'sent' });
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!invoices || invoices.length === 0) return;
+
+    const headers = ['Invoice #', 'Client', 'Amount', 'Status', 'Due Date', 'Created'];
+    const rows = invoices.map((inv: Invoice) => [
+      inv.invoice_number,
+      inv.client?.name || 'N/A',
+      `$${Number(inv.total).toFixed(2)}`,
+      inv.status,
+      inv.due_date ? format(new Date(inv.due_date), 'MMM dd, yyyy') : 'N/A',
+      format(new Date(inv.created_at), 'MMM dd, yyyy'),
+    ]);
+
+    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoices-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Outstanding
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats.totalOutstanding.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Overdue Invoices
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{stats.overdueCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Paid This Month
+            </CardTitle>
+            <CheckCircle className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-primary">${stats.paidThisMonth.toFixed(2)}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Actions Row */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="cancelled">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={handleExportCSV} disabled={!invoices?.length}>
+            <FileDown className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+        <Button onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Invoice
+        </Button>
+      </div>
+
+      {/* Invoices Table */}
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex h-32 items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+          ) : filteredInvoices?.length === 0 ? (
+            <div className="flex h-32 flex-col items-center justify-center text-muted-foreground">
+              <p>No invoices found</p>
+              <Button variant="link" onClick={() => setCreateDialogOpen(true)}>
+                Create your first invoice
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="w-[80px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredInvoices?.map((invoice: Invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
+                    <TableCell>{invoice.client?.name || 'N/A'}</TableCell>
+                    <TableCell>${Number(invoice.total).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <InvoiceStatusBadge status={invoice.status} />
+                    </TableCell>
+                    <TableCell>
+                      {invoice.due_date 
+                        ? format(new Date(invoice.due_date), 'MMM dd, yyyy')
+                        : 'No due date'}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                            <>
+                              <DropdownMenuItem onClick={() => handleSendInvoice(invoice.id, invoice.status)}>
+                                <Send className="mr-2 h-4 w-4" />
+                                {invoice.status === 'draft' ? 'Send Invoice' : 'Send Reminder'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMarkPaid(invoice.id)}>
+                                <CheckCircle className="mr-2 h-4 w-4" />
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          <DropdownMenuItem 
+                            onClick={() => deleteInvoice.mutate(invoice.id)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Invoice Dialog */}
+      <CreateInvoiceDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        organizationId={organizationId}
+        onSubmit={(data) => {
+          createInvoice.mutate(data, {
+            onSuccess: () => setCreateDialogOpen(false),
+          });
+        }}
+        isLoading={createInvoice.isPending}
+      />
+    </div>
+  );
+};
+
+export default InvoicesTab;

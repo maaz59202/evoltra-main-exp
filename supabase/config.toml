@@ -1,0 +1,25 @@
+project_id = "nvqnbnzbnzgpuckconte"
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
+
+[functions.send-invite-email]
+verify_jwt = false
+
+[functions.client-auth]
+verify_jwt = false
+
+[functions.client-messages]
+verify_jwt = false
+
+[functions.notify-lead]
+verify_jwt = false
+
+[functions.send-invoice-reminder]
+verify_jwt = false
