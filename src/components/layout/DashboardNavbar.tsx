@@ -52,7 +52,7 @@ const DashboardNavbar = () => {
   const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
 
   return (
-    <div className="flex h-12 items-center justify-between gap-4 px-4 border-b bg-background">
+    <div className="app-navbar flex h-12 items-center justify-between gap-4 border-b bg-background px-4">
       <SidebarTrigger />
 
       {/* Right side actions */}

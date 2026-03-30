@@ -30,6 +30,7 @@ import FunnelBuilder from "./pages/FunnelBuilder";
 import PublicFunnel from "./pages/PublicFunnel";
 import Leads from "./pages/Leads";
 import Billing from "./pages/Billing";
+import InvoiceDetails from "./pages/InvoiceDetails";
 import ProjectDetails from "./pages/ProjectDetails";
 import Settings from "./pages/Settings";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
@@ -160,6 +161,16 @@ const App = () => (
                   <ProtectedRoute>
                     <WithDashboardLayout>
                       <Billing />
+                    </WithDashboardLayout>
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/billing/invoices/:invoiceId" 
+                element={
+                  <ProtectedRoute>
+                    <WithDashboardLayout>
+                      <InvoiceDetails />
                     </WithDashboardLayout>
                   </ProtectedRoute>
                 } 

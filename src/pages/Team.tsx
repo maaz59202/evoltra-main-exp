@@ -2,6 +2,16 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -12,10 +22,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import TeamMemberCard from '@/components/team/TeamMemberCard';
 import PendingInviteCard from '@/components/team/PendingInviteCard';
 import InviteMemberDialog from '@/components/team/InviteMemberDialog';
+import CreateOrganizationDialog from '@/components/organizations/CreateOrganizationDialog';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useProjects } from '@/hooks/useProjects';
 import { useAuth } from '@/contexts/AuthContext';
 import { TEAM_ROLES } from '@/data/productCopy';
+import { toast } from 'sonner';
 import { 
   Users, 
   UserPlus, 
@@ -29,9 +41,11 @@ import {
 
 const Team = () => {
   const { user } = useAuth();
-  const { organizations, loading: orgsLoading } = useProjects();
+  const { organizations, loading: orgsLoading, refetch, deleteOrganization } = useProjects();
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showOrgDialog, setShowOrgDialog] = useState(false);
+  const [showDeleteOrgDialog, setShowDeleteOrgDialog] = useState(false);
 
   // Auto-select first organization
   const activeOrgId = selectedOrgId || organizations[0]?.id || null;
@@ -67,7 +81,7 @@ const Team = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2">
           <Select
             value={activeOrgId || ''}
             onValueChange={(value) => setSelectedOrgId(value || null)}
@@ -84,6 +98,17 @@ const Team = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <Button variant="outline" onClick={() => setShowOrgDialog(true)}>
+            <Building2 className="w-4 h-4 mr-2" />
+            New Org
+          </Button>
+
+          {currentUserRole === 'owner' && activeOrgId && (
+            <Button variant="destructive" onClick={() => setShowDeleteOrgDialog(true)}>
+              Delete Org
+            </Button>
+          )}
 
           {canManageMembers && (
             <Button onClick={() => setShowInviteDialog(true)}>
@@ -203,6 +228,45 @@ const Team = () => {
         onOpenChange={setShowInviteDialog}
         onInvite={inviteMember}
       />
+
+      <CreateOrganizationDialog
+        open={showOrgDialog}
+        onOpenChange={setShowOrgDialog}
+        onSuccess={async () => {
+          await refetch();
+          toast.success('Organization created!');
+        }}
+      />
+
+      <AlertDialog open={showDeleteOrgDialog} onOpenChange={setShowDeleteOrgDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the organization and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!activeOrgId) return;
+                try {
+                  await deleteOrganization(activeOrgId);
+                  await refetch();
+                  toast.success('Organization deleted');
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'Failed to delete organization';
+                  toast.error(message);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -119,6 +119,40 @@ export const useProjects = () => {
     setProjects(prev => prev.filter(p => p.id !== id));
   };
 
+  const deleteOrganization = async (organizationId: string) => {
+    if (!user) throw new Error('You must be logged in');
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw sessionError;
+
+    const accessToken = sessionData?.session?.access_token;
+    if (!accessToken) {
+      throw new Error('Not authenticated');
+    }
+
+    const { data, error } = await supabase.functions.invoke('delete-organization', {
+      body: { organizationId },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
+    if (!data?.success) {
+      throw new Error(data?.error || 'Failed to delete organization');
+    }
+
+    setOrganizations(prev => {
+      const remaining = prev.filter(org => org.id !== organizationId);
+      if (selectedOrgId === organizationId) {
+        setSelectedOrgId(remaining[0]?.id || null);
+      }
+      return remaining;
+    });
+  };
+
   useEffect(() => {
     fetchOrganizations();
   }, [fetchOrganizations]);
@@ -142,6 +176,7 @@ export const useProjects = () => {
     createProject,
     updateProject,
     deleteProject,
+    deleteOrganization,
     refetch,
   };
 };

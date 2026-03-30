@@ -16,6 +16,16 @@ import { Plus, Search, FolderOpen, Loader2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Projects = () => {
   const {
@@ -28,12 +38,14 @@ const Projects = () => {
     createProject,
     updateProject,
     deleteProject,
+    deleteOrganization,
     refetch,
   } = useProjects();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOrgDialog, setShowOrgDialog] = useState(false);
+  const [showDeleteOrgDialog, setShowDeleteOrgDialog] = useState(false);
 
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -68,10 +80,16 @@ const Projects = () => {
             <Badge variant="outline">{filteredProjects.length} visible</Badge>
           </div>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="gradient-primary text-white w-full md:w-auto">
-          <Plus className="w-4 h-4 mr-2" />
-          New Project
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          <Button variant="outline" onClick={() => setShowOrgDialog(true)} className="w-full md:w-auto">
+            <Building2 className="w-4 h-4 mr-2" />
+            New Organization
+          </Button>
+          <Button onClick={() => setShowCreateDialog(true)} className="gradient-primary text-white w-full md:w-auto">
+            <Plus className="w-4 h-4 mr-2" />
+            New Project
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -87,19 +105,29 @@ const Projects = () => {
             />
           </div>
 
-          <Select value={selectedOrgId || ''} onValueChange={setSelectedOrgId}>
-            <SelectTrigger className="w-full sm:w-[240px]">
-              <Building2 className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="All Organizations" />
-            </SelectTrigger>
-            <SelectContent>
-              {organizations.map((org) => (
-                <SelectItem key={org.id} value={org.id}>
-                  {org.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Select value={selectedOrgId || ''} onValueChange={setSelectedOrgId}>
+              <SelectTrigger className="w-full sm:w-[240px]">
+                <Building2 className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="All Organizations" />
+              </SelectTrigger>
+              <SelectContent>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="destructive"
+              className="w-full sm:w-auto"
+              onClick={() => setShowDeleteOrgDialog(true)}
+              disabled={!selectedOrgId}
+            >
+              Delete Org
+            </Button>
+          </div>
         </div>
       </Card>
 
@@ -166,6 +194,36 @@ const Projects = () => {
           toast.success('Organization created!');
         }}
       />
+
+      <AlertDialog open={showDeleteOrgDialog} onOpenChange={setShowDeleteOrgDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the organization and all associated data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!selectedOrgId) return;
+                try {
+                  await deleteOrganization(selectedOrgId);
+                  await refetch();
+                  toast.success('Organization deleted');
+                } catch (err) {
+                  const message = err instanceof Error ? err.message : 'Failed to delete organization';
+                  toast.error(message);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

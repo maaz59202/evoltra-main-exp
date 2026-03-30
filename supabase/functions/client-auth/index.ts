@@ -87,9 +87,24 @@ serve(async (req) => {
   }
 
   try {
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const SITE_URL =
+      Deno.env.get("PUBLIC_SITE_URL") ||
+      Deno.env.get("SITE_URL") ||
+      Deno.env.get("APP_URL") ||
+      "";
+
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Server not configured: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY",
+        }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body: RequestBody = await req.json();
@@ -128,11 +143,18 @@ serve(async (req) => {
 
       // Check if client user exists or create one
       let clientUser;
-      const { data: existingClient } = await supabase
+      const { data: existingClients, error: existingError } = await supabase
         .from("client_users")
         .select("*")
         .eq("email", email.toLowerCase())
-        .single();
+        .limit(1);
+
+      if (existingError) {
+        console.error("Error checking existing client:", existingError);
+        throw existingError;
+      }
+
+      const existingClient = existingClients?.[0];
 
       if (existingClient) {
         clientUser = existingClient;
@@ -181,7 +203,7 @@ serve(async (req) => {
       console.log("Project client link created:", projectClient.id);
 
       // Build invite link
-      const origin = req.headers.get("origin") || "https://evoltra-suite.com";
+      const origin = req.headers.get("origin") || SITE_URL || "https://evoltra-suite.com";
       const inviteLink = `${origin}/client/accept/${projectClient.invite_token}`;
       console.log("Invite link:", inviteLink);
 
@@ -333,13 +355,13 @@ serve(async (req) => {
     if (body.action === "login") {
       const { email, password } = body as LoginRequest;
 
-      const { data: clientUser, error } = await supabase
+      const { data: clientUsers, error } = await supabase
         .from("client_users")
         .select("*")
         .eq("email", email.toLowerCase())
-        .single();
+        .order("created_at", { ascending: false });
 
-      if (error || !clientUser) {
+      if (error || !clientUsers || clientUsers.length === 0) {
         return new Response(JSON.stringify({ success: false, error: "Invalid email or password" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -347,7 +369,17 @@ serve(async (req) => {
       }
 
       const hashedPassword = await hashPassword(password);
-      if (hashedPassword !== clientUser.password_hash) {
+      const candidates = clientUsers.filter((u: { password_hash?: string | null }) => !!u.password_hash);
+
+      if (candidates.length === 0) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Password not set. Use your invite link to create one." }),
+          { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const clientUser = candidates.find((u: { password_hash?: string | null }) => u.password_hash === hashedPassword);
+      if (!clientUser) {
         return new Response(JSON.stringify({ success: false, error: "Invalid email or password" }), {
           status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

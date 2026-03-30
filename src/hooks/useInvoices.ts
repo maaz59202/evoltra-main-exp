@@ -47,69 +47,11 @@ export interface CreateInvoiceData {
   items: InvoiceItem[];
 }
 
-// Helper to execute raw queries for tables not in generated types
-async function queryTable<T>(
-  table: string, 
-  options: { 
-    select?: string; 
-    eq?: [string, unknown]; 
-    in?: [string, unknown[]];
-    order?: [string, { ascending: boolean }];
-    insert?: Record<string, unknown> | Record<string, unknown>[];
-    update?: Record<string, unknown>;
-    delete?: boolean;
-  }
-): Promise<{ data: T | null; error: Error | null }> {
-  const { data: { session } } = await supabase.auth.getSession();
-  const url = `https://nvqnbnzbnzgpuckconte.supabase.co/rest/v1/${table}`;
-  const headers: Record<string, string> = {
-    'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52cW5ibnpibnpncHVja2NvbnRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA0NjUzOTEsImV4cCI6MjA4NjA0MTM5MX0.tfUPwSQoTxXLMsB_UEp23CTI17XGx_60iL3_2i-mlF0',
-    'Content-Type': 'application/json',
-  };
-  
-  if (session?.access_token) {
-    headers['Authorization'] = `Bearer ${session.access_token}`;
-  }
-
-  try {
-    let queryUrl = url;
-    const params: string[] = [];
-    
-    if (options.select) params.push(`select=${encodeURIComponent(options.select)}`);
-    if (options.eq) params.push(`${options.eq[0]}=eq.${options.eq[1]}`);
-    if (options.in) params.push(`${options.in[0]}=in.(${options.in[1].join(',')})`);
-    if (options.order) params.push(`order=${options.order[0]}.${options.order[1].ascending ? 'asc' : 'desc'}`);
-    
-    if (params.length) queryUrl += `?${params.join('&')}`;
-
-    let method = 'GET';
-    let body: string | undefined;
-
-    if (options.insert) {
-      method = 'POST';
-      body = JSON.stringify(options.insert);
-      headers['Prefer'] = 'return=representation';
-    } else if (options.update) {
-      method = 'PATCH';
-      body = JSON.stringify(options.update);
-      headers['Prefer'] = 'return=representation';
-    } else if (options.delete) {
-      method = 'DELETE';
-    }
-
-    const response = await fetch(queryUrl, { method, headers, body });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Query failed');
-    }
-
-    const data = options.delete ? null : await response.json();
-    return { data: data as T, error: null };
-  } catch (error) {
-    return { data: null, error: error as Error };
-  }
-}
+const billingDb = supabase as unknown as {
+  from: (table: string) => any;
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  functions: typeof supabase.functions;
+};
 
 export const useInvoices = (organizationId?: string) => {
   const { toast } = useToast();
@@ -119,12 +61,12 @@ export const useInvoices = (organizationId?: string) => {
     queryKey: ['invoices', organizationId],
     queryFn: async (): Promise<Invoice[]> => {
       if (!organizationId) return [];
-      
-      const { data, error } = await queryTable<Invoice[]>('invoices', {
-        select: '*',
-        eq: ['organization_id', organizationId],
-        order: ['created_at', { ascending: false }],
-      });
+
+      const { data, error } = await billingDb
+        .from('invoices')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       
@@ -154,31 +96,33 @@ export const useInvoices = (organizationId?: string) => {
 
   const createInvoice = useMutation({
     mutationFn: async (invoiceData: CreateInvoiceData) => {
-      const { items, ...invoiceFields } = invoiceData;
-      
-      const { data: invoice, error: invoiceError } = await queryTable<Invoice[]>('invoices', {
-        insert: invoiceFields,
-      });
-
-      if (invoiceError) throw invoiceError;
-      const invoiceResult = Array.isArray(invoice) ? invoice[0] : invoice;
-      if (!invoiceResult) throw new Error('Failed to create invoice');
-
-      // Create invoice items
-      if (items.length > 0) {
-        const itemsWithInvoiceId = items.map(item => ({
-          ...item,
-          invoice_id: invoiceResult.id,
+      const sanitizedItems = invoiceData.items
+        .filter((item) => item.description.trim() && item.quantity > 0)
+        .map((item) => ({
+          description: item.description.trim(),
+          quantity: item.quantity,
+          unit_price: item.unit_price,
         }));
 
-        const { error: itemsError } = await queryTable<InvoiceItem[]>('invoice_items', {
-          insert: itemsWithInvoiceId,
-        });
-
-        if (itemsError) throw itemsError;
+      if (sanitizedItems.length === 0) {
+        throw new Error('Add at least one valid invoice item before creating the invoice.');
       }
 
-      return invoiceResult;
+      const { data, error } = await billingDb.rpc('create_invoice_with_items', {
+        p_organization_id: invoiceData.organization_id,
+        p_client_id: invoiceData.client_id ?? null,
+        p_project_id: invoiceData.project_id ?? null,
+        p_due_date: invoiceData.due_date ?? null,
+        p_notes: invoiceData.notes ?? null,
+        p_tax_rate: invoiceData.tax_rate,
+        p_status: invoiceData.status ?? 'draft',
+        p_items: sanitizedItems,
+      });
+
+      if (error) throw new Error(error.message || 'Failed to create invoice');
+      if (!data) throw new Error('Failed to create invoice');
+
+      return data as Invoice;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -207,13 +151,15 @@ export const useInvoices = (organizationId?: string) => {
         updateData.paid_at = paid_at;
       }
 
-      const { data, error } = await queryTable<Invoice[]>('invoices', {
-        update: updateData,
-        eq: ['id', invoiceId],
-      });
+      const { data, error } = await billingDb
+        .from('invoices')
+        .update(updateData)
+        .eq('id', invoiceId)
+        .select()
+        .single();
 
       if (error) throw error;
-      return Array.isArray(data) ? data[0] : data;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -233,10 +179,17 @@ export const useInvoices = (organizationId?: string) => {
 
   const deleteInvoice = useMutation({
     mutationFn: async (invoiceId: string) => {
-      const { error } = await queryTable<null>('invoices', {
-        delete: true,
-        eq: ['id', invoiceId],
-      });
+      const { error: itemsError } = await billingDb
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', invoiceId);
+
+      if (itemsError) throw itemsError;
+
+      const { error } = await billingDb
+        .from('invoices')
+        .delete()
+        .eq('id', invoiceId);
 
       if (error) throw error;
     },

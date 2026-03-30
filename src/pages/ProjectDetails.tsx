@@ -11,6 +11,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, FolderOpen, MessageSquare, Users, Kanban } from 'lucide-react';
 import { format } from 'date-fns';
 import InviteClientDialog from '@/components/projects/InviteClientDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface Project {
   id: string;
@@ -21,7 +33,8 @@ interface Project {
 }
 
 interface ClientInfo {
-  id: string;
+  projectClientId: string;
+  clientUserId: string | null;
   email: string;
   full_name: string | null;
   created_at: string | null;
@@ -75,40 +88,22 @@ const ProjectDetails = () => {
           id,
           client_user_id,
           created_at,
-          password_set
+          password_set,
+          client_users (
+            id,
+            email,
+            full_name
+          )
         `)
         .eq('project_id', projectId);
 
       if (error) throw error;
 
-      const clientUserIds = (data || [])
-        .map((pc: { client_user_id?: string | null }) => pc.client_user_id)
-        .filter(Boolean) as string[];
-
-      let clientsById: Record<string, { email: string; full_name: string | null }> = {};
-      if (clientUserIds.length > 0) {
-        const { data: clientUsers, error: clientUsersError } = await supabase
-          .from('client_users')
-          .select('id, email, full_name')
-          .in('id', clientUserIds);
-
-        if (clientUsersError) {
-          throw clientUsersError;
-        }
-
-        clientsById = (clientUsers || []).reduce((acc, client) => {
-          acc[client.id] = {
-            email: client.email || 'Unknown',
-            full_name: client.full_name,
-          };
-          return acc;
-        }, {} as Record<string, { email: string; full_name: string | null }>);
-      }
-
       const clientList: ClientInfo[] = (data || []).map((pc: any) => {
-        const linkedClient = pc.client_user_id ? clientsById[pc.client_user_id] : null;
+        const linkedClient = pc.client_users || null;
         return {
-          id: pc.client_user_id || pc.id,
+          projectClientId: pc.id,
+          clientUserId: pc.client_user_id || null,
           email: linkedClient?.email || 'Unknown',
           full_name: linkedClient?.full_name || null,
           created_at: pc.created_at,
@@ -229,7 +224,7 @@ const ProjectDetails = () => {
                 <div className="space-y-3">
                   {clients.map((client) => (
                     <div 
-                      key={client.id}
+                      key={client.projectClientId}
                       className="flex items-center justify-between p-3 rounded-lg border bg-card"
                     >
                       <div className="flex items-center gap-3">
@@ -243,9 +238,49 @@ const ProjectDetails = () => {
                           )}
                         </div>
                       </div>
-                      <Badge variant={client.password_set ? 'default' : 'secondary'}>
-                        {client.password_set ? 'Active' : 'Pending'}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={client.password_set ? 'default' : 'secondary'}>
+                          {client.password_set ? 'Active' : 'Pending'}
+                        </Badge>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              Revoke
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Revoke Client Access</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove the client’s access to this project immediately. You can re‑invite them later if needed.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={async () => {
+                                  try {
+                                    const { error } = await supabase
+                                      .from('project_clients')
+                                      .delete()
+                                      .eq('id', client.projectClientId);
+
+                                    if (error) throw error;
+                                    toast.success('Client access revoked');
+                                    fetchClients();
+                                  } catch (err) {
+                                    const message = err instanceof Error ? err.message : 'Failed to revoke access';
+                                    toast.error(message);
+                                  }
+                                }}
+                              >
+                                Revoke
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                   ))}
                 </div>

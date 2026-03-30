@@ -39,23 +39,38 @@ const Signup = () => {
 
     setLoading(true);
 
-    const { error } = await signUp(email, password, fullName);
+    const { error, data } = await signUp(email, password, fullName);
 
     if (error) {
+      const message = error.message || 'Could not create account';
+      const isDuplicate =
+        message.toLowerCase().includes('already') ||
+        message.toLowerCase().includes('duplicate') ||
+        message.toLowerCase().includes('exists');
       toast({
         variant: 'destructive',
         title: 'Signup failed',
-        description: error.message || 'Could not create account'
+        description: isDuplicate
+          ? 'An account with this email already exists. Please sign in or use Google/GitHub to continue.'
+          : message
       });
       setLoading(false);
       return;
     }
 
-    setEmailSent(true);
-    toast({
-      title: 'Account created!',
-      description: 'Please check your email to verify your account.'
-    });
+    if (data?.session) {
+      toast({
+        title: 'Account created!',
+        description: 'You are now signed in.'
+      });
+      navigate('/dashboard');
+    } else {
+      setEmailSent(true);
+      toast({
+        title: 'Account created!',
+        description: 'Please check your email to verify your account.'
+      });
+    }
   };
 
   if (emailSent) {

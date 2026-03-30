@@ -130,6 +130,11 @@ export const useTasks = (projectId: string | null) => {
     if (!task) return;
 
     const isDefault = isDefaultStatus(newStatusOrColumnId);
+    const currentColumnKey = task.column_id || task.status;
+
+    if (currentColumnKey === newStatusOrColumnId && task.position === newPosition) {
+      return;
+    }
     
     // Optimistic update
     setTasks(prev => {

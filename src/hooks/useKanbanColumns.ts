@@ -62,9 +62,20 @@ export const useKanbanColumns = (projectId: string | null) => {
   const createColumn = async (name: string) => {
     if (!user || !projectId) throw new Error('Must be logged in with a project selected');
 
-    const maxPosition = columns.length > 0 
-      ? Math.max(...columns.map(c => c.position)) + 1 
-      : 0;
+    const { data: existingColumns, error: existingColumnsError } = await supabase
+      .from('kanban_columns')
+      .select('position')
+      .eq('project_id', projectId)
+      .order('position', { ascending: false })
+      .limit(1);
+
+    if (existingColumnsError) throw existingColumnsError;
+
+    const maxPosition = existingColumns && existingColumns.length > 0
+      ? existingColumns[0].position + 1
+      : columns.length > 0
+        ? Math.max(...columns.map(c => c.position)) + 1
+        : 0;
 
     const { data, error } = await supabase
       .from('kanban_columns')
@@ -77,8 +88,7 @@ export const useKanbanColumns = (projectId: string | null) => {
       .single();
 
     if (error) throw error;
-    setColumns(prev => [...prev, data]);
-    setUsingDefaults(false);
+    await fetchColumns();
     return data;
   };
 
@@ -93,7 +103,7 @@ export const useKanbanColumns = (projectId: string | null) => {
       .single();
 
     if (error) throw error;
-    setColumns(prev => prev.map(c => c.id === id ? data : c));
+    await fetchColumns();
     return data;
   };
 
@@ -106,13 +116,7 @@ export const useKanbanColumns = (projectId: string | null) => {
       .eq('id', id);
 
     if (error) throw error;
-    setColumns(prev => {
-      const filtered = prev.filter(c => c.id !== id);
-      if (filtered.length === 0) {
-        setUsingDefaults(true);
-      }
-      return filtered;
-    });
+    await fetchColumns();
   };
 
   const initializeDefaultColumns = async () => {
@@ -130,8 +134,7 @@ export const useKanbanColumns = (projectId: string | null) => {
       .select();
 
     if (error) throw error;
-    setColumns(data || []);
-    setUsingDefaults(false);
+    await fetchColumns();
     return data;
   };
 

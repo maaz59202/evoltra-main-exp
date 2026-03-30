@@ -10,6 +10,7 @@ import {
   Settings,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
+import { cn } from '@/lib/utils';
 import {
   Sidebar,
   SidebarContent,
@@ -43,19 +44,26 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
+    <Sidebar collapsible="icon" className="app-sidebar border-r border-border">
       <SidebarContent className="pt-2">
-        <SidebarMenu>
+        <SidebarMenu className="px-2">
           {mainNavItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.url)}
                 tooltip={item.title}
+                className={cn(
+                  'h-10 rounded-xl transition-colors',
+                  collapsed ? 'mx-auto !size-10 !justify-center !p-0' : 'w-full',
+                )}
               >
                 <NavLink
                   to={item.url}
-                  className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors"
+                  className={cn(
+                    'flex items-center rounded-xl transition-colors',
+                    collapsed ? 'h-10 w-10 justify-center p-0' : 'w-full gap-3 px-3 py-2',
+                  )}
                   activeClassName="bg-primary/10 text-primary font-medium"
                 >
                   <item.icon className="h-5 w-5 shrink-0" />

@@ -4,11 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, MoreHorizontal, Send, CheckCircle, FileDown, Trash2, DollarSign, AlertTriangle } from 'lucide-react';
+import { Plus, MoreHorizontal, Send, CheckCircle, FileDown, Trash2, DollarSign, AlertTriangle, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
 import CreateInvoiceDialog from './CreateInvoiceDialog';
+import { useToast } from '@/hooks/use-toast';
 
 interface InvoicesTabProps {
   organizationId: string;
@@ -16,6 +17,7 @@ interface InvoicesTabProps {
 
 const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
   const { invoices, isLoading, stats, createInvoice, updateInvoiceStatus, sendInvoiceReminder, deleteInvoice } = useInvoices(organizationId);
+  const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -31,15 +33,28 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
     });
   };
 
-  const handleSendInvoice = (invoiceId: string, currentStatus: string) => {
+  const handleSendInvoice = async (invoiceId: string, currentStatus: string) => {
+    const invoice = invoices?.find((item) => item.id === invoiceId);
+    if (!invoice?.client_id || !invoice.client?.email) {
+      toast({
+        title: 'Client required',
+        description: 'Add a client with an email address before sending this invoice.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     const reminderType = currentStatus === 'draft' ? 'initial' : 
                          currentStatus === 'overdue' ? 'overdue' : 'reminder';
-    
-    sendInvoiceReminder.mutate({ invoiceId, reminderType });
-    
-    // Update status to sent if it's a draft
-    if (currentStatus === 'draft') {
-      updateInvoiceStatus.mutate({ invoiceId, status: 'sent' });
+
+    try {
+      await sendInvoiceReminder.mutateAsync({ invoiceId, reminderType });
+
+      if (currentStatus === 'draft') {
+        await updateInvoiceStatus.mutateAsync({ invoiceId, status: 'sent' });
+      }
+    } catch (error) {
+      console.error('Failed to send invoice email:', error);
     }
   };
 
@@ -64,6 +79,10 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
     a.download = `invoices-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleViewInvoice = (invoiceId: string) => {
+    window.open(`/billing/invoices/${invoiceId}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -180,9 +199,13 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewInvoice(invoice.id)}>
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            View Invoice
+                          </DropdownMenuItem>
                           {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                             <>
-                              <DropdownMenuItem onClick={() => handleSendInvoice(invoice.id, invoice.status)}>
+                              <DropdownMenuItem onClick={() => void handleSendInvoice(invoice.id, invoice.status)}>
                                 <Send className="mr-2 h-4 w-4" />
                                 {invoice.status === 'draft' ? 'Send Invoice' : 'Send Reminder'}
                               </DropdownMenuItem>

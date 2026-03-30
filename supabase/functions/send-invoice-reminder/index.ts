@@ -14,12 +14,36 @@ interface InvoiceReminderRequest {
   reminderType: "initial" | "reminder" | "overdue";
 }
 
+const getUserIdFromAuthHeader = (authHeader: string | null) => {
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const [, payload] = token.split(".");
+    const decoded = JSON.parse(atob(payload));
+    return typeof decoded.sub === "string" ? decoded.sub : null;
+  } catch (error) {
+    console.error("Failed to decode auth header:", error);
+    return null;
+  }
+};
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    const userId = getUserIdFromAuthHeader(req.headers.get("Authorization"));
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const gmailUser = Deno.env.get("GMAIL_USER");
     const gmailPass = Deno.env.get("GMAIL_APP_PASSWORD");
     if (!gmailUser || !gmailPass) {
@@ -53,6 +77,21 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({ error: "Invoice not found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", invoice.organization_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      console.error("Unauthorized invoice reminder attempt:", membershipError);
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

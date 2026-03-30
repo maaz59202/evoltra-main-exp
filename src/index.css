@@ -54,6 +54,10 @@
     --sidebar-accent-foreground: 220 30% 10%;
     --sidebar-border: 220 15% 88%;
     --sidebar-ring: 250 85% 60%;
+
+    --scrollbar-track: 220 20% 93%;
+    --scrollbar-thumb: 220 10% 68%;
+    --scrollbar-thumb-hover: 250 70% 58%;
   }
 
   .dark {
@@ -103,6 +107,10 @@
     --sidebar-accent-foreground: 220 20% 95%;
     --sidebar-border: 225 25% 20%;
     --sidebar-ring: 250 85% 65%;
+
+    --scrollbar-track: 225 24% 14%;
+    --scrollbar-thumb: 225 14% 34%;
+    --scrollbar-thumb-hover: 250 70% 66%;
   }
 }
 
@@ -114,6 +122,44 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+    scrollbar-width: thin;
+  }
+
+  html {
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+    scrollbar-width: thin;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--scrollbar-track));
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--scrollbar-thumb)),
+      hsl(var(--scrollbar-thumb) / 0.82)
+    );
+    border: 2px solid hsl(var(--scrollbar-track));
+    border-radius: 999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(
+      180deg,
+      hsl(var(--scrollbar-thumb-hover)),
+      hsl(var(--scrollbar-thumb))
+    );
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: hsl(var(--scrollbar-track));
   }
 }
 
@@ -164,21 +210,186 @@
 
   /* Custom scrollbar */
   .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: hsl(var(--muted));
-    border-radius: 3px;
+    background: hsl(var(--scrollbar-track));
+    border-radius: 999px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted-foreground) / 0.3);
-    border-radius: 3px;
+    background: hsl(var(--scrollbar-thumb));
+    border: 1px solid hsl(var(--scrollbar-track));
+    border-radius: 999px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: hsl(var(--scrollbar-thumb-hover));
+  }
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 10mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    scrollbar-width: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .app-sidebar,
+  .app-navbar,
+  .invoice-screen-controls,
+  [data-sidebar="trigger"],
+  [data-sidebar="sidebar"] {
+    display: none !important;
+  }
+
+  main,
+  .group\/sidebar-wrapper,
+  [data-sidebar="inset"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+  }
+
+  .invoice-print-page {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .invoice-paper {
+    border: 1px solid #d4d4d8 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    color: #111111 !important;
+  }
+
+  .invoice-paper > div {
+    padding: 16px !important;
+  }
+
+  .invoice-panel,
+  .invoice-line-items,
+  .invoice-totals {
+    border-color: #d4d4d8 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+  }
+
+  .invoice-paper * {
+    color: #111111 !important;
+    text-shadow: none !important;
+  }
+
+  .invoice-paper .text-muted-foreground {
+    color: #52525b !important;
+  }
+
+  .invoice-paper svg {
+    color: #52525b !important;
+  }
+
+  .invoice-top-grid,
+  .invoice-meta-grid {
+    gap: 0.65rem !important;
+  }
+
+  .invoice-top-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+    align-items: start !important;
+  }
+
+  .invoice-meta-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .invoice-panel {
+    padding: 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .invoice-line-items,
+  .invoice-totals {
+    border-radius: 14px !important;
+  }
+
+  .invoice-line-items .grid,
+  .invoice-totals,
+  .invoice-paper .space-y-8 {
+    row-gap: 0.4rem !important;
+  }
+
+  .invoice-line-items > div:first-child,
+  .invoice-line-items > div:last-child > div {
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .invoice-paper .text-3xl {
+    font-size: 1.4rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .invoice-paper .text-2xl {
+    font-size: 1.1rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .invoice-paper .text-lg {
+    font-size: 0.95rem !important;
+  }
+
+  .invoice-paper .text-base,
+  .invoice-paper .text-sm {
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .invoice-paper .mb-6 {
+    margin-bottom: 0.5rem !important;
+  }
+
+  .invoice-paper .mb-3 {
+    margin-bottom: 0.35rem !important;
+  }
+
+  .invoice-paper .mb-2,
+  .invoice-paper .mt-1,
+  .invoice-paper .space-y-3 > * + *,
+  .invoice-paper .space-y-2 > * + * {
+    margin-top: 0.25rem !important;
+  }
+
+  .invoice-paper .space-y-8 > * + * {
+    margin-top: 0.7rem !important;
+  }
+
+  .invoice-print-page {
+    font-size: 12px !important;
+  }
+
+  .invoice-line-items {
+    break-inside: avoid;
+  }
+
+  .invoice-line-items .border-b,
+  .invoice-paper .border-t {
+    border-color: #d4d4d8 !important;
   }
 }

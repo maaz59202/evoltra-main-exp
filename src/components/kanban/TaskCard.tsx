@@ -123,16 +123,15 @@ const TaskCard = ({ task, members = [], onUpdate, onDelete }: TaskCardProps) => 
       <Card
         ref={setNodeRef}
         style={style}
-        className="p-3 bg-card hover:shadow-md transition-shadow group"
+        className="group rounded-lg border border-border/50 bg-background/70 p-2.5 shadow-none transition-all hover:border-border hover:bg-background/85 hover:shadow-sm"
       >
         <div className="flex items-start gap-2">
-          {/* Drag handle */}
           <div
             {...attributes}
             {...listeners}
-            className="mt-0.5 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing touch-none"
+            className="mt-0.5 cursor-grab touch-none text-muted-foreground/70 opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 active:cursor-grabbing"
           >
-            <GripVertical className="w-4 h-4" />
+            <GripVertical className="h-3.5 w-3.5" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -156,7 +155,7 @@ const TaskCard = ({ task, members = [], onUpdate, onDelete }: TaskCardProps) => 
                 <Button 
                   size="icon" 
                   variant="ghost" 
-                  className="h-7 w-7" 
+                  className="h-7 w-7 rounded-md" 
                   onClick={(e) => { e.stopPropagation(); handleSave(); }} 
                   disabled={isLoading}
                 >
@@ -165,7 +164,7 @@ const TaskCard = ({ task, members = [], onUpdate, onDelete }: TaskCardProps) => 
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-7 w-7"
+                  className="h-7 w-7 rounded-md"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsEditing(false);
@@ -176,25 +175,28 @@ const TaskCard = ({ task, members = [], onUpdate, onDelete }: TaskCardProps) => 
                 </Button>
               </div>
             ) : (
-              <p className="text-sm font-medium truncate">{task.title}</p>
+              <p className="truncate text-[13px] font-medium leading-5 text-foreground/95">{task.title}</p>
             )}
 
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {task.priority && !isEditing && (
-                <Badge variant="outline" className={`text-xs ${priorityColors[task.priority]}`}>
+                <Badge
+                  variant="outline"
+                  className={`h-5 rounded-md px-1.5 text-[10px] font-medium uppercase tracking-[0.08em] ${priorityColors[task.priority]}`}
+                >
                   {task.priority}
                 </Badge>
               )}
-              
+               
               {assignee && (
-                <div className="flex items-center gap-1">
-                  <Avatar className="h-5 w-5">
+                <div className="flex items-center gap-1.5 rounded-md bg-background/50 px-1.5 py-1">
+                  <Avatar className="h-4.5 w-4.5">
                     <AvatarImage src={assignee.profile?.avatar_url || undefined} />
-                    <AvatarFallback className="text-[10px]">
+                    <AvatarFallback className="text-[9px]">
                       {getInitials(assignee.profile?.full_name || assignee.profile?.email)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+                  <span className="max-w-[72px] truncate text-[11px] text-muted-foreground">
                     {assignee.profile?.full_name || assignee.profile?.email || 'Unknown'}
                   </span>
                 </div>
@@ -208,11 +210,11 @@ const TaskCard = ({ task, members = [], onUpdate, onDelete }: TaskCardProps) => 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 rounded-md opacity-0 transition-opacity group-hover:opacity-100"
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <MoreHorizontal className="w-4 h-4" />
+                  <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onPointerDown={(e) => e.stopPropagation()}>

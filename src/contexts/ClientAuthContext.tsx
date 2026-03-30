@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface ClientUser {
   id: string;
@@ -67,6 +68,14 @@ export const ClientAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       });
 
       if (error) {
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const errorResponse = await error.context.json();
+            return { error: errorResponse?.error || error.message };
+          } catch {
+            return { error: error.message };
+          }
+        }
         return { error: error.message };
       }
 
