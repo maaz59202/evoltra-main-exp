@@ -48,9 +48,36 @@ export const useOrganizationMembers = (organizationId: string | null) => {
           .select('user_id, full_name, email, avatar_url')
           .in('user_id', userIds);
 
+        const missingUserIds = userIds.filter((userId) => !(profiles || []).some((profile) => profile.user_id === userId));
+        let resolvedIdentities: Record<string, { full_name: string | null; email: string | null; avatar_url: string | null }> = {};
+
+        if (missingUserIds.length > 0) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session?.access_token) {
+            const { data: identityData, error: identityError } = await supabase.functions.invoke('resolve-user-identities', {
+              body: { userIds: missingUserIds, organizationId },
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            });
+
+            if (identityError) {
+              console.warn('Failed to resolve missing member identities:', identityError);
+            } else {
+              resolvedIdentities = identityData?.identities || {};
+            }
+          }
+        }
+
         const membersWithProfiles = membersData.map(member => ({
           ...member,
-          profile: profiles?.find(p => p.user_id === member.user_id) || undefined
+          profile:
+            profiles?.find(p => p.user_id === member.user_id) ||
+            resolvedIdentities[member.user_id] ||
+            undefined
         }));
 
         setMembers(membersWithProfiles as OrganizationMember[]);

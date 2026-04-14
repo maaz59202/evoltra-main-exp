@@ -22,7 +22,7 @@ const Docs = () => {
       items: [
         {
           question: 'What is Evoltra?',
-          answer: 'Evoltra is a multi-tenant SaaS platform designed for freelancers and agencies. It provides project management, client portals, funnel building, and team collaboration tools in one unified platform.'
+          answer: 'Evoltra is a workspace for freelancers and agencies. It brings together project tracking, client access, funnel building, invoicing, and team collaboration.'
         },
         {
           question: 'How do I create an account?',
@@ -30,7 +30,7 @@ const Docs = () => {
         },
         {
           question: 'What happens during onboarding?',
-          answer: 'During onboarding, you\'ll select your mode (Solo or Team), enter your business name, and choose your primary goals. This helps us customize your experience.'
+          answer: 'During onboarding, you choose Solo or Team mode, enter your business name, and set up your workspace so the right features are enabled from the start.'
         },
       ]
     },
@@ -76,7 +76,7 @@ const Docs = () => {
       items: [
         {
           question: 'What is the Funnel Builder?',
-          answer: 'The Funnel Builder is a visual drag-and-drop editor for creating landing pages and marketing funnels. It includes widgets like text, images, buttons, forms, and more.'
+          answer: 'The Funnel Builder is a drag-and-drop editor for landing pages and funnels. You can add sections like text, images, buttons, and forms, then publish the result as a public page.'
         },
         {
           question: 'How many funnels can I create?',
@@ -147,7 +147,7 @@ const Docs = () => {
               <span className="gradient-text">Documentation</span>
             </h1>
             <p className="text-lg text-muted-foreground mb-8">
-              Everything you need to know about using Evoltra
+              Guides for the main parts of the product
             </p>
             
             {/* Search */}

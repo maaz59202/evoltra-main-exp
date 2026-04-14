@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrencyAmount, getCurrencyConfig, type SupportedCurrencyCode } from '@/lib/currency';
+import { getPaymentReceivingRows, parsePaymentReceivingDetails } from '@/lib/payment-receiving';
 
 type InvoiceDetailsRecord = {
   id: string;
@@ -23,6 +25,7 @@ type InvoiceDetailsRecord = {
   client_id: string | null;
   project_id: string | null;
   organization_id: string;
+  currency: SupportedCurrencyCode;
   client?: {
     id: string;
     name: string;
@@ -35,6 +38,11 @@ type InvoiceDetailsRecord = {
   organization?: {
     id: string;
     name: string;
+    payment_receiving_details?: unknown;
+    payment_account_name?: string | null;
+    payment_account_number?: string | null;
+    payment_bank_name?: string | null;
+    payment_link?: string | null;
   } | null;
   items: Array<{
     id: string;
@@ -71,12 +79,14 @@ const InvoiceDetails = () => {
 
       const { data: membership, error: membershipError } = await billingDb
         .from('organization_members')
-        .select('organization_id')
+        .select('organization_id, role')
         .eq('user_id', user.id);
 
       if (membershipError) throw membershipError;
 
-      const allowedOrganizationIds = (membership || []).map(
+      const allowedOrganizationIds = (membership || [])
+        .filter((row: { organization_id: string; role: string | null }) => row.role === 'owner' || row.role === 'admin')
+        .map(
         (row: { organization_id: string }) => row.organization_id,
       );
       if (allowedOrganizationIds.length === 0) {
@@ -101,7 +111,11 @@ const InvoiceDetails = () => {
           invoice.project_id
             ? billingDb.from('projects').select('id, name').eq('id', invoice.project_id).maybeSingle()
             : Promise.resolve({ data: null }),
-          billingDb.from('organizations').select('id, name').eq('id', invoice.organization_id).maybeSingle(),
+          billingDb
+            .from('organizations')
+            .select('id, name, payment_receiving_details, payment_account_name, payment_account_number, payment_bank_name, payment_link')
+            .eq('id', invoice.organization_id)
+            .maybeSingle(),
           billingDb
             .from('invoice_items')
             .select('id, description, quantity, unit_price, amount')
@@ -109,11 +123,32 @@ const InvoiceDetails = () => {
             .order('id', { ascending: true }),
         ]);
 
+      let resolvedOrganization = organization || null;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (resolvedOrganization && session?.access_token) {
+        const { data: decryptedResponse, error: decryptedError } = await supabase.functions.invoke('get-payment-receiving-details', {
+          body: { organizationId: invoice.organization_id },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (!decryptedError && decryptedResponse?.organization) {
+          resolvedOrganization = {
+            ...resolvedOrganization,
+            ...decryptedResponse.organization,
+          };
+        }
+      }
+
       return {
         ...invoice,
         client: client || null,
         project: project || null,
-        organization: organization || null,
+        organization: resolvedOrganization,
         items: items || [],
       } as InvoiceDetailsRecord;
     },
@@ -124,6 +159,18 @@ const InvoiceDetails = () => {
     if (!data) return 0;
     return Number(data.total) - Number(data.subtotal);
   }, [data]);
+
+  const paymentReceivingDetails = useMemo(
+    () => parsePaymentReceivingDetails(data?.organization),
+    [data?.organization],
+  );
+
+  const paymentReceivingRows = useMemo(
+    () => (paymentReceivingDetails ? getPaymentReceivingRows(paymentReceivingDetails) : []),
+    [paymentReceivingDetails],
+  );
+
+  const currencyLabel = useMemo(() => getCurrencyConfig(data?.currency).label, [data?.currency]);
 
   if (isLoading) {
     return (
@@ -243,7 +290,7 @@ const InvoiceDetails = () => {
 
             <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
               <p className="mb-3 text-sm uppercase tracking-[0.18em] text-muted-foreground">Currency</p>
-              <span>USD ($)</span>
+              <span>{currencyLabel}</span>
             </div>
           </div>
 
@@ -263,8 +310,8 @@ const InvoiceDetails = () => {
                 >
                   <div className="col-span-6">{item.description}</div>
                   <div className="col-span-2">{Number(item.quantity)}</div>
-                  <div className="col-span-2">${Number(item.unit_price).toFixed(2)}</div>
-                  <div className="col-span-2 text-right">${Number(item.amount).toFixed(2)}</div>
+                  <div className="col-span-2">{formatCurrencyAmount(Number(item.unit_price), data.currency)}</div>
+                  <div className="col-span-2 text-right">{formatCurrencyAmount(Number(item.amount), data.currency)}</div>
                 </div>
               ))}
             </div>
@@ -273,15 +320,15 @@ const InvoiceDetails = () => {
           <div className="invoice-totals ml-auto max-w-sm space-y-2 rounded-[24px] border border-border/70 bg-background/30 p-5">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>${Number(data.subtotal).toFixed(2)}</span>
+              <span>{formatCurrencyAmount(Number(data.subtotal), data.currency)}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Tax ({Number(data.tax_rate).toFixed(2)}%)</span>
-              <span>${taxAmount.toFixed(2)}</span>
+              <span>{formatCurrencyAmount(taxAmount, data.currency)}</span>
             </div>
             <div className="flex items-center justify-between border-t border-border/70 pt-3 text-base font-semibold">
               <span>Total</span>
-              <span>${Number(data.total).toFixed(2)}</span>
+              <span>{formatCurrencyAmount(Number(data.total), data.currency)}</span>
             </div>
           </div>
 
@@ -289,6 +336,42 @@ const InvoiceDetails = () => {
             <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
               <p className="mb-2 text-sm uppercase tracking-[0.18em] text-muted-foreground">Notes</p>
               <p className="text-sm text-muted-foreground">{data.notes}</p>
+            </div>
+          )}
+
+          {paymentReceivingDetails && (
+            <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
+              <p className="mb-4 text-sm uppercase tracking-[0.18em] text-muted-foreground">Payment Receiving Details</p>
+              <div className="space-y-3 text-sm">
+                {paymentReceivingRows.map((row) => (
+                  <div key={row.label} className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground">{row.label}</span>
+                    <span>{row.value}</span>
+                  </div>
+                ))}
+                {data.organization?.payment_link && (
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-muted-foreground">Payment Link</span>
+                    <a
+                      href={data.organization.payment_link}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline"
+                    >
+                      Open payment link
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!paymentReceivingDetails && (
+            <div className="invoice-panel rounded-[24px] border border-amber-500/40 bg-amber-500/10 p-5">
+              <p className="mb-2 text-sm uppercase tracking-[0.18em] text-amber-200">Payment Receiving Details Incomplete</p>
+              <p className="text-sm text-amber-100/90">
+                Add a valid payment method in Billing before sending this invoice.
+              </p>
             </div>
           )}
         </CardContent>

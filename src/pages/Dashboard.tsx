@@ -19,11 +19,14 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { getPendingInvite } from '@/lib/pendingInvite';
 
 const Dashboard = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { checkSubscription, waitForSubscriptionUpdate } = useSubscription();
+  const navigate = useNavigate();
+  const { checkSubscription, waitForSubscriptionUpdate, isTeam } = useSubscription();
   const { stats, activity, loading: dashboardLoading } = useDashboardData();
 
   // Handle checkout callback from Stripe
@@ -48,6 +51,15 @@ const Dashboard = () => {
       setSearchParams(searchParams, { replace: true });
     }
   }, []);
+
+  useEffect(() => {
+    if (!profile?.onboarding_completed) return;
+
+    const pendingInvite = getPendingInvite();
+    if (pendingInvite?.path) {
+      navigate(pendingInvite.path, { replace: true });
+    }
+  }, [navigate, profile?.onboarding_completed]);
 
   const statCards = [
     { label: 'Active Projects', value: stats.activeProjects, icon: <BarChart3 className="w-5 h-5" />, color: 'text-primary' },
@@ -196,7 +208,7 @@ const Dashboard = () => {
       </div>
 
       {/* Team Mode Banner */}
-      {profile?.mode === 'team' && (
+      {isTeam && (
         <Card className="glass-card border-primary/20">
           <CardContent className="p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

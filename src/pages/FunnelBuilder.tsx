@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { DndContext, DragEndEvent, pointerWithin } from '@dnd-kit/core';
-import { useFunnelEditor } from '@/hooks/useFunnelEditor';
+import { Loader2 } from 'lucide-react';
+
 import { WidgetLibrary } from '@/components/funnel/WidgetLibrary';
 import { FunnelCanvas } from '@/components/funnel/FunnelCanvas';
 import { PropertiesPanel } from '@/components/funnel/PropertiesPanel';
 import { FunnelEditorToolbar } from '@/components/funnel/FunnelEditorToolbar';
-import { WidgetType } from '@/types/funnel';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FunnelCanvas as PreviewCanvas } from '@/components/funnel/FunnelCanvas';
-import { Loader2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useFunnelEditor } from '@/hooks/useFunnelEditor';
+import { useOrganizationPermissions } from '@/hooks/useOrganizationPermissions';
+import { WidgetType } from '@/types/funnel';
 
 const FunnelBuilder = () => {
   const { funnelId } = useParams();
@@ -23,10 +25,12 @@ const FunnelBuilder = () => {
     devicePreview,
     isDirty,
     isSaving,
+    lastSavedAt,
     isLoading,
     setSelectedWidgetId,
     setDevicePreview,
     addWidget,
+    insertTemplate,
     updateWidgetProps,
     deleteWidget,
     duplicateWidget,
@@ -37,25 +41,46 @@ const FunnelBuilder = () => {
     updateFunnelName,
     togglePublish,
   } = useFunnelEditor(funnelId);
+  const { permissions } = useOrganizationPermissions(funnel?.workspaceId);
+  const canManageFunnels = permissions.manageFunnels;
+  const canViewFunnels = permissions.viewFunnels;
+  const isReadOnly = !!funnel && canViewFunnels && !canManageFunnels;
+
+  useEffect(() => {
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (!canManageFunnels) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        void saveFunnel();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [canManageFunnels, saveFunnel]);
+
+  useEffect(() => {
+    if (!isLoading && funnel && !canManageFunnels && !canViewFunnels) {
+      navigate('/funnels', { replace: true });
+    }
+  }, [canManageFunnels, canViewFunnels, funnel, isLoading, navigate]);
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (!canManageFunnels) return;
     const { active, over } = event;
-    
+
     if (!over) return;
 
     const activeData = active.data.current;
     const overData = over.data.current;
 
-    // If dragging from library (new widget)
     if (activeData?.isNew) {
       const widgetType = activeData.type as WidgetType;
       const containerId = overData?.containerId || null;
       addWidget(widgetType, containerId);
     } else {
-      // Reordering existing widgets
       const activeWidget = activeData?.widget;
       if (activeWidget) {
-        // Check if dropping into a container
         if (overData?.containerId !== undefined) {
           moveToContainer(activeWidget.id, overData.containerId);
         } else if (over.id !== active.id && typeof over.id === 'string') {
@@ -81,7 +106,7 @@ const FunnelBuilder = () => {
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <p className="text-muted-foreground mb-4">Funnel not found</p>
-          <button 
+          <button
             onClick={() => navigate('/funnels')}
             className="text-primary hover:underline"
           >
@@ -92,17 +117,82 @@ const FunnelBuilder = () => {
     );
   }
 
+  if (isReadOnly) {
+    return (
+      <div className="h-screen flex flex-col bg-muted/30">
+        <div className="border-b border-border/60 bg-background/95 px-5 py-4 backdrop-blur">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Funnel preview
+              </p>
+              <h1 className="mt-1 text-2xl font-semibold">{funnel?.name}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                You can review this funnel, but only workspace owners and admins can edit it.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate('/funnels')}
+                className="rounded-xl border border-border/70 bg-background px-4 py-2 text-sm hover:bg-accent"
+              >
+                Back to funnels
+              </button>
+              <button
+                onClick={() => setShowPreview(true)}
+                className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+              >
+                Open preview
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-auto">
+          <PreviewCanvas
+            widgets={funnel?.widgets || []}
+            selectedWidgetId={null}
+            devicePreview={devicePreview}
+            isPreview={true}
+            getChildWidgets={getChildWidgets}
+            onSelectWidget={() => {}}
+            onDeleteWidget={() => {}}
+            onDuplicateWidget={() => {}}
+          />
+        </div>
+
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="max-w-6xl h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Preview: {funnel?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-auto bg-background">
+              <PreviewCanvas
+                widgets={funnel?.widgets || []}
+                selectedWidgetId={null}
+                devicePreview={devicePreview}
+                isPreview={true}
+                getChildWidgets={getChildWidgets}
+                onSelectWidget={() => {}}
+                onDeleteWidget={() => {}}
+                onDuplicateWidget={() => {}}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
   return (
-    <DndContext
-      collisionDetection={pointerWithin}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext collisionDetection={pointerWithin} onDragEnd={handleDragEnd}>
       <div className="h-screen flex flex-col bg-muted/30">
         <FunnelEditorToolbar
           funnel={funnel}
           devicePreview={devicePreview}
           isDirty={isDirty}
           isSaving={isSaving}
+          lastSavedAt={lastSavedAt}
           onDeviceChange={setDevicePreview}
           onNameChange={updateFunnelName}
           onSave={saveFunnel}
@@ -110,13 +200,18 @@ const FunnelBuilder = () => {
           onTogglePublish={togglePublish}
         />
 
-        <div className="flex-1 flex overflow-hidden">
-          <WidgetLibrary />
-          
+        <div className="flex flex-1 overflow-hidden">
+          <WidgetLibrary
+            onAddWidget={(type) => addWidget(type, null)}
+            onInsertTemplate={insertTemplate}
+          />
+
           <FunnelCanvas
             widgets={funnel?.widgets || []}
             selectedWidgetId={selectedWidgetId}
             devicePreview={devicePreview}
+            onQuickAdd={() => addWidget('section', null)}
+            onQuickTemplate={() => insertTemplate('hero')}
             getChildWidgets={getChildWidgets}
             onSelectWidget={setSelectedWidgetId}
             onDeleteWidget={deleteWidget}
@@ -130,14 +225,13 @@ const FunnelBuilder = () => {
         </div>
       </div>
 
-      {/* Preview Modal */}
       <Dialog open={showPreview} onOpenChange={setShowPreview}>
         <DialogContent className="max-w-6xl h-[90vh]">
           <DialogHeader>
             <DialogTitle>Preview: {funnel?.name}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-auto bg-background">
-            <FunnelCanvas
+            <PreviewCanvas
               widgets={funnel?.widgets || []}
               selectedWidgetId={null}
               devicePreview={devicePreview}

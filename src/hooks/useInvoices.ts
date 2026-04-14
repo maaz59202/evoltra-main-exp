@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { DEFAULT_CURRENCY, type SupportedCurrencyCode } from '@/lib/currency';
 
 export interface InvoiceItem {
   id?: string;
@@ -17,6 +18,7 @@ export interface Invoice {
   organization_id: string;
   client_id: string | null;
   project_id: string | null;
+  currency: SupportedCurrencyCode;
   status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   subtotal: number;
   tax_rate: number;
@@ -38,6 +40,7 @@ export interface CreateInvoiceData {
   organization_id: string;
   client_id?: string;
   project_id?: string;
+  currency: SupportedCurrencyCode;
   status?: string;
   subtotal: number;
   tax_rate: number;
@@ -112,6 +115,7 @@ export const useInvoices = (organizationId?: string) => {
         p_organization_id: invoiceData.organization_id,
         p_client_id: invoiceData.client_id ?? null,
         p_project_id: invoiceData.project_id ?? null,
+        p_currency: invoiceData.currency ?? DEFAULT_CURRENCY,
         p_due_date: invoiceData.due_date ?? null,
         p_notes: invoiceData.notes ?? null,
         p_tax_rate: invoiceData.tax_rate,
@@ -159,6 +163,29 @@ export const useInvoices = (organizationId?: string) => {
         .single();
 
       if (error) throw error;
+
+      if (status === 'paid') {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.access_token) {
+          const { error: emailError } = await supabase.functions.invoke('send-activity-email', {
+            body: {
+              type: 'invoice_paid',
+              invoiceId,
+            },
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          });
+
+          if (emailError) {
+            console.warn('Invoice paid email notification failed:', emailError);
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -211,8 +238,24 @@ export const useInvoices = (organizationId?: string) => {
 
   const sendInvoiceReminder = useMutation({
     mutationFn: async ({ invoiceId, reminderType }: { invoiceId: string; reminderType: 'initial' | 'reminder' | 'overdue' }) => {
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      if (!session?.access_token) {
+        throw new Error('You need to be signed in to send invoice emails.');
+      }
+
       const { data, error } = await supabase.functions.invoke('send-invoice-reminder', {
         body: { invoiceId, reminderType },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) throw error;

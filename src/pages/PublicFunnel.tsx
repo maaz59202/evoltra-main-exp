@@ -98,7 +98,7 @@ const PublicFunnel = () => {
     if (formWidget && 'successMessage' in formWidget.props) {
       return (formWidget.props as any).successMessage;
     }
-    return 'Thank you for submitting!';
+    return 'Thank you!';
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {

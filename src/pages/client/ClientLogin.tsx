@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const ClientLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useClientAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,7 +28,7 @@ const ClientLogin = () => {
       setLoading(false);
     } else {
       toast.success('Welcome back!');
-      navigate('/client/portal');
+      navigate(searchParams.get('redirect') || '/client/portal');
     }
   };
 

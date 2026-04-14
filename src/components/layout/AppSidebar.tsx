@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { cn } from '@/lib/utils';
+import { useOrganizationPermissions } from '@/hooks/useOrganizationPermissions';
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +36,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
+  const { permissions } = useOrganizationPermissions();
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -43,11 +45,16 @@ export function AppSidebar() {
     return location.pathname.startsWith(path);
   };
 
+  const visibleItems = mainNavItems.filter((item) => {
+    if (item.url === '/billing') return permissions.viewBilling;
+    return true;
+  });
+
   return (
     <Sidebar collapsible="icon" className="app-sidebar border-r border-border">
       <SidebarContent className="pt-2">
         <SidebarMenu className="px-2">
-          {mainNavItems.map((item) => (
+          {visibleItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
                 asChild

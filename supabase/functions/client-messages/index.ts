@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,6 +17,11 @@ interface SendMessageRequest {
   action: "send";
   projectId: string;
   message: string;
+}
+
+interface NotificationPreferences {
+  emailNotifications?: boolean;
+  clientMessages?: boolean;
 }
 
 type RequestBody = GetMessagesRequest | SendMessageRequest;
@@ -49,6 +55,8 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Evoltra <noreply@contact.evoltra.site>";
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const body: RequestBody = await req.json();
@@ -58,11 +66,30 @@ serve(async (req) => {
 
     if (!clientId) return json(401, { success: false, error: "Client not authenticated" });
 
+    const { data: currentClient, error: currentClientError } = await supabase
+      .from("client_users")
+      .select("id, email, full_name")
+      .eq("id", clientId)
+      .maybeSingle();
+
+    if (currentClientError || !currentClient?.email) {
+      return json(401, { success: false, error: "Client account not found" });
+    }
+
+    const { data: relatedClients, error: relatedClientsError } = await supabase
+      .from("client_users")
+      .select("id")
+      .eq("email", currentClient.email.toLowerCase());
+
+    if (relatedClientsError) throw relatedClientsError;
+
+    const accessibleClientIds = Array.from(new Set((relatedClients || []).map((entry) => entry.id)));
+
     // Verify client has access to this project
     const { data: projectClient, error: accessError } = await supabase
       .from("project_clients")
       .select("*")
-      .eq("client_user_id", clientId)
+      .in("client_user_id", accessibleClientIds)
       .eq("project_id", body.projectId)
       .eq("password_set", true)
       .single();
@@ -78,7 +105,67 @@ serve(async (req) => {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return json(200, { success: true, messages });
+
+      const teamSenderIds = Array.from(
+        new Set(
+          (messages || [])
+            .filter((message: { sender_type: string; sender_id: string | null }) => message.sender_type !== "client" && !!message.sender_id)
+            .map((message: { sender_id: string | null }) => message.sender_id)
+            .filter(Boolean),
+        ),
+      ) as string[];
+
+      const clientSenderIds = Array.from(
+        new Set(
+          (messages || [])
+            .filter((message: { sender_type: string; client_sender_id?: string | null; sender_id: string | null }) => message.sender_type === "client")
+            .map((message: { client_sender_id?: string | null; sender_id: string | null }) => message.client_sender_id || message.sender_id)
+            .filter(Boolean),
+        ),
+      ) as string[];
+
+      const senderNames: Record<string, string> = {};
+
+      if (teamSenderIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .in("user_id", teamSenderIds);
+
+        (profiles || []).forEach((profile: { user_id: string; full_name: string | null; email: string | null }) => {
+          senderNames[profile.user_id] = profile.full_name || profile.email || "Team Member";
+        });
+      }
+
+      if (clientSenderIds.length > 0) {
+        const { data: clients } = await supabase
+          .from("client_users")
+          .select("id, full_name, email")
+          .in("id", clientSenderIds);
+
+        (clients || []).forEach((client: { id: string; full_name: string | null; email: string | null }) => {
+          senderNames[client.id] = client.full_name || client.email || "Client";
+        });
+      }
+
+      const enrichedMessages = (messages || []).map(
+        (message: {
+          sender_type: string;
+          sender_id: string | null;
+          sender_name?: string | null;
+          client_sender_id?: string | null;
+        }) => ({
+          ...message,
+          sender_name:
+            message.sender_name ||
+            (message.sender_type === "client"
+              ? senderNames[message.client_sender_id || message.sender_id || ""]
+              : senderNames[message.sender_id || ""]) ||
+            (message.sender_type === "client" ? "Client" : "Team Member"),
+        }),
+      );
+
+      return json(200, { success: true, messages: enrichedMessages });
     }
 
     // SEND MESSAGE
@@ -88,19 +175,13 @@ serve(async (req) => {
       if (!message.trim()) return json(400, { success: false, error: "Message cannot be empty" });
 
       // Get client info for the sender name
-      const { data: clientUser } = await supabase
-        .from("client_users")
-        .select("full_name, email")
-        .eq("id", clientId)
-        .single();
-
       const { data: newMessage, error } = await supabase
         .from("project_messages")
         .insert({
           project_id: projectId,
-          // sender_id is FK to users; client ids are from client_users.
-          // Keep sender_id null for client-originated messages.
           sender_id: null,
+          client_sender_id: clientId,
+          sender_name: currentClient.full_name || currentClient.email || "Client",
           sender_type: "client",
           message: message.trim(),
         })
@@ -129,7 +210,7 @@ serve(async (req) => {
             .map((member: { user_id: string }) => ({
             user_id: member.user_id,
             type: "message",
-            title: `New message from ${clientUser?.full_name || clientUser?.email || "client"}`,
+            title: `New message from ${currentClient.full_name || currentClient.email || "client"}`,
             message: message.length > 100 ? message.substring(0, 100) + "..." : message,
             project_id: projectId,
           }));
@@ -138,6 +219,66 @@ serve(async (req) => {
             const { error: notificationError } = await supabase.from("notifications").insert(notifications);
             if (notificationError) {
               console.warn("Notification insert failed:", notificationError);
+            }
+          }
+
+          if (resendApiKey) {
+            const memberUserIds = orgMembers
+              .map((member: { user_id: string | null }) => member.user_id)
+              .filter(Boolean) as string[];
+
+            if (memberUserIds.length > 0) {
+              const { data: recipientProfiles, error: recipientError } = await supabase
+                .from("profiles")
+                .select("user_id, email, full_name, notification_preferences")
+                .in("user_id", memberUserIds);
+
+              if (recipientError) {
+                console.warn("Failed to load client message email recipients:", recipientError);
+              } else {
+                const recipients = (recipientProfiles || []).filter(
+                  (profile: {
+                    email?: string | null;
+                    notification_preferences?: NotificationPreferences | null;
+                  }) => {
+                    const prefs = profile.notification_preferences || {};
+                    return !!profile.email && prefs.emailNotifications !== false && prefs.clientMessages !== false;
+                  },
+                );
+
+                if (recipients.length > 0) {
+                  const resend = new Resend(resendApiKey);
+                  const previewText = message.length > 240 ? `${message.slice(0, 237)}...` : message;
+
+                  const emailResults = await Promise.allSettled(
+                    recipients.map((recipient: { email: string }) =>
+                      resend.emails.send({
+                        from: fromEmail,
+                        to: recipient.email,
+                        subject: `New client message in ${project.name}`,
+                        html: `
+                          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
+                            <h2 style="margin-bottom: 8px;">New client message</h2>
+                            <p><strong>${currentClient.full_name || currentClient.email || "A client"}</strong> sent a new message in <strong>${project.name}</strong>.</p>
+                            <div style="margin: 16px 0; padding: 16px; border-radius: 12px; background: #f3f4f6;">
+                              ${previewText}
+                            </div>
+                            <p>Open Evoltra to reply and keep the conversation moving.</p>
+                          </div>
+                        `,
+                      }),
+                    ),
+                  );
+
+                  emailResults.forEach((result) => {
+                    if (result.status === "rejected") {
+                      console.warn("Client message email notification failed:", result.reason);
+                    } else if (result.value?.error) {
+                      console.warn("Client message email provider error:", result.value.error);
+                    }
+                  });
+                }
+              }
             }
           }
         }

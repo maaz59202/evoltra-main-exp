@@ -32,7 +32,7 @@ const isDefaultStatus = (status: string): status is TaskStatus => {
 };
 
 export const useTasks = (projectId: string | null) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,12 +94,36 @@ export const useTasks = (projectId: string | null) => {
     // Add to state immediately for instant UI feedback
     const newTask = data as Task;
     setTasks(prev => [...prev, newTask]);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token) {
+      const { error: emailError } = await supabase.functions.invoke('send-activity-email', {
+        body: {
+          type: 'project_update',
+          projectId,
+          message: `New task added: "${title.trim()}".`,
+          senderName: profile?.full_name || user.email || 'Your team',
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (emailError) {
+        console.warn('Task creation email notification failed:', emailError);
+      }
+    }
     
     return newTask;
   };
 
   const updateTask = async (id: string, updates: Partial<Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'position' | 'assignee_id'>>) => {
     if (!user) throw new Error('Must be logged in');
+
+    const existingTask = tasks.find((task) => task.id === id);
 
     const { data, error } = await supabase
       .from('tasks')
@@ -109,12 +133,41 @@ export const useTasks = (projectId: string | null) => {
       .single();
 
     if (error) throw error;
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token && existingTask) {
+      const label = updates.title
+        ? `Task renamed to "${updates.title}".`
+        : `Task updated: "${existingTask.title}".`;
+
+      const { error: emailError } = await supabase.functions.invoke('send-activity-email', {
+        body: {
+          type: 'project_update',
+          projectId,
+          message: label,
+          senderName: profile?.full_name || user.email || 'Your team',
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (emailError) {
+        console.warn('Task update email notification failed:', emailError);
+      }
+    }
+
     setTasks(prev => prev.map(t => t.id === id ? (data as Task) : t));
     return data as Task;
   };
 
   const deleteTask = async (id: string) => {
     if (!user) throw new Error('Must be logged in');
+
+    const existingTask = tasks.find((task) => task.id === id);
 
     const { error } = await supabase
       .from('tasks')
@@ -123,6 +176,28 @@ export const useTasks = (projectId: string | null) => {
 
     if (error) throw error;
     setTasks(prev => prev.filter(t => t.id !== id));
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session?.access_token && existingTask) {
+      const { error: emailError } = await supabase.functions.invoke('send-activity-email', {
+        body: {
+          type: 'project_update',
+          projectId,
+          message: `Task removed: "${existingTask.title}".`,
+          senderName: profile?.full_name || user.email || 'Your team',
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (emailError) {
+        console.warn('Task delete email notification failed:', emailError);
+      }
+    }
   };
 
   const moveTask = async (taskId: string, newStatusOrColumnId: string, newPosition: number) => {
@@ -160,6 +235,32 @@ export const useTasks = (projectId: string | null) => {
         .from('tasks')
         .update(updateData)
         .eq('id', taskId);
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        const targetLabel = isDefault
+          ? COLUMNS.find((column) => column.id === newStatusOrColumnId)?.title || 'a new lane'
+          : 'a custom lane';
+
+        const { error: emailError } = await supabase.functions.invoke('send-activity-email', {
+          body: {
+            type: 'project_update',
+            projectId,
+            message: `Task moved: "${task.title}" is now in ${targetLabel}.`,
+            senderName: profile?.full_name || user.email || 'Your team',
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (emailError) {
+          console.warn('Task move email notification failed:', emailError);
+        }
+      }
     } catch (err) {
       console.error('Error moving task:', err);
       // Revert on error

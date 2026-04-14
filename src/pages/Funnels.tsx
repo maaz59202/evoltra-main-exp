@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFunnels } from '@/hooks/useFunnels';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useProjects } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,42 +13,33 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { funnelTemplates, FunnelTemplate } from '@/data/funnelTemplates';
 import { Widget } from '@/types/funnel';
+import { ROLE_PERMISSIONS } from '@/data/productCopy';
 
 const Funnels = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { funnels, isLoading, deleteFunnel, createFunnel, isCreating, isDeleting } = useFunnels();
-  const { isSolo, isTeam } = useSubscription();
+  const { isSolo } = useSubscription();
+  const { organizations, selectedOrgId } = useProjects();
   const soloLimitReached = isSolo && funnels.length >= 1;
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<FunnelTemplate | null>(null);
   const [newFunnelName, setNewFunnelName] = useState('');
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-
-  // Fetch user's organization
-  useEffect(() => {
-    const fetchOrganization = async () => {
-      if (!user) return;
-      
-      const { data } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
-      if (data) {
-        setOrganizationId(data.organization_id);
-      }
-    };
-    
-    fetchOrganization();
-  }, [user]);
+  const manageableOrganizations = organizations.filter(
+    (organization) => organization.role && ROLE_PERMISSIONS[organization.role].manageFunnels
+  );
+  const createOrganizationId =
+    selectedOrgId && manageableOrganizations.some((organization) => organization.id === selectedOrgId)
+      ? selectedOrgId
+      : manageableOrganizations[0]?.id || null;
+  const selectedOrganization = organizations.find((organization) => organization.id === createOrganizationId) || null;
+  const selectedPermissions = selectedOrganization?.role ? ROLE_PERMISSIONS[selectedOrganization.role] : null;
+  const visibleFunnels = selectedOrgId
+    ? funnels.filter((funnel) => funnel.workspaceId === selectedOrgId)
+    : funnels;
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -57,6 +49,10 @@ const Funnels = () => {
   };
 
   const handleOpenCreateDialog = () => {
+    if (!selectedPermissions?.manageFunnels) {
+      toast.error('Only workspace owners and admins can create funnels.');
+      return;
+    }
     if (soloLimitReached) {
       toast.error('Solo plan is limited to 1 funnel. Upgrade to Team for unlimited funnels.', {
         action: {
@@ -72,7 +68,7 @@ const Funnels = () => {
   };
 
   const handleCreateNew = async () => {
-    if (!newFunnelName.trim() || !organizationId || !selectedTemplate) return;
+    if (!newFunnelName.trim() || !createOrganizationId || !selectedTemplate || !selectedPermissions?.manageFunnels) return;
     
     // Generate fresh widget IDs for the template
     const templateWidgets = selectedTemplate.widgets.length > 0 
@@ -81,7 +77,7 @@ const Funnels = () => {
 
     const newFunnel = await createFunnel({ 
       name: newFunnelName.trim(), 
-      organizationId,
+      organizationId: createOrganizationId,
       widgets: templateWidgets,
     });
     
@@ -125,10 +121,10 @@ const Funnels = () => {
           {isSolo && (
             <Badge variant="secondary" className="gap-1">
               <Lock className="w-3 h-3" />
-              {funnels.length}/1 Funnel
+              {visibleFunnels.length}/1 Funnel
             </Badge>
           )}
-          <Button onClick={handleOpenCreateDialog} disabled={!organizationId}>
+          <Button onClick={handleOpenCreateDialog} disabled={!createOrganizationId || !selectedPermissions?.manageFunnels}>
             <Plus className="w-4 h-4 mr-2" />
             Create Funnel
           </Button>
@@ -139,7 +135,7 @@ const Funnels = () => {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
         </div>
-      ) : funnels.length === 0 ? (
+      ) : visibleFunnels.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
@@ -149,20 +145,29 @@ const Funnels = () => {
             <p className="text-muted-foreground text-center mb-4 max-w-md">
               Create your first funnel to start building landing pages for lead capture and conversions.
             </p>
-            <Button onClick={handleOpenCreateDialog} disabled={!organizationId}>
+            <Button onClick={handleOpenCreateDialog} disabled={!createOrganizationId || !selectedPermissions?.manageFunnels}>
               <Plus className="w-4 h-4 mr-2" />
-              Create Your First Funnel
+              {selectedPermissions?.manageFunnels ? 'Create Your First Funnel' : 'No funnels available'}
             </Button>
-            {!organizationId && (
+            {!createOrganizationId && (
               <p className="text-sm text-destructive mt-2">
                 You need to be part of an organization to create funnels.
+              </p>
+            )}
+            {createOrganizationId && !selectedPermissions?.manageFunnels && (
+              <p className="text-sm text-muted-foreground mt-2">
+                You can view funnels in this workspace, but only owners and admins can create them.
               </p>
             )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {funnels.map((funnel) => (
+          {visibleFunnels.map((funnel) => {
+            const funnelOrganization = organizations.find((organization) => organization.id === funnel.workspaceId) || null;
+            const funnelPermissions = funnelOrganization?.role ? ROLE_PERMISSIONS[funnelOrganization.role] : null;
+
+            return (
             <Card key={funnel.id} className="group hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -172,6 +177,7 @@ const Funnels = () => {
                       Updated {format(new Date(funnel.updatedAt), 'MMM d, yyyy')}
                     </CardDescription>
                   </div>
+                  {funnelPermissions?.manageFunnels && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -198,6 +204,7 @@ const Funnels = () => {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  )}
                 </div>
               </CardHeader>
               <CardContent>
@@ -211,15 +218,27 @@ const Funnels = () => {
                 </div>
                 
                 <div className="mt-4 pt-4 border-t border-border flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => navigate(`/funnel/${funnel.id}`)}
-                  >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </Button>
+                  {funnelPermissions?.manageFunnels ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                        onClick={() => navigate(`/funnel/${funnel.id}`)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => window.open(funnel.publishedUrl || `/f/${funnel.id}`, '_blank')}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      View
+                    </Button>
+                  )}
                   {funnel.status === 'published' && funnel.publishedUrl && (
                     <Button 
                       variant="outline" 
@@ -232,7 +251,8 @@ const Funnels = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
 

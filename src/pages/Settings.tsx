@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,9 +12,20 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { clearPendingInvite } from '@/lib/pendingInvite';
 import { 
   User, 
   Bell, 
@@ -30,15 +41,33 @@ import {
   Lock,
   Smartphone,
   ArrowUpRight,
-  RefreshCw
+  RefreshCw,
+  TriangleAlert
 } from 'lucide-react';
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, profile, updateProfile, signOut } = useAuth();
   const navigate = useNavigate();
-  const { isTeam, subscriptionEnd, loading: subLoading, openCustomerPortal, checkSubscription } = useSubscription();
+  const {
+    isTeam,
+    subscriptionEnd,
+    cancelAtPeriodEnd,
+    loading: subLoading,
+    openCustomerPortal,
+    checkSubscription,
+  } = useSubscription();
+
+  const subscriptionStatusLabel = isTeam
+    ? `${PLAN_DEFINITIONS.team.name} plan active${
+        subscriptionEnd
+          ? ` · ${cancelAtPeriodEnd ? 'Ends' : 'Renews'} ${new Date(subscriptionEnd).toLocaleDateString()}`
+          : ''
+      }`
+    : `${PLAN_DEFINITIONS.solo.priceLabel} plan with core features`;
   const [isDark, setIsDark] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   
   // Profile state
   const [fullName, setFullName] = useState('');
@@ -58,6 +87,9 @@ const Settings = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountEmail, setDeleteAccountEmail] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   
 
   useEffect(() => {
@@ -69,29 +101,22 @@ const Settings = () => {
     }
     setIsDark(dark);
     
-    // Load saved settings from localStorage
-    let savedNotifications: string | null = null;
-    try {
-      savedNotifications = localStorage.getItem('notificationSettings');
-    } catch {
-      savedNotifications = null;
-    }
-    if (savedNotifications) {
-      setNotifications(JSON.parse(savedNotifications));
-    }
-    
-    let savedProfile: string | null = null;
-    try {
-      savedProfile = localStorage.getItem('profileSettings');
-    } catch {
-      savedProfile = null;
-    }
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile);
-      setFullName(profile.fullName || '');
-      setBusinessName(profile.businessName || '');
-    }
   }, []);
+
+  useEffect(() => {
+    if (!profile) return;
+
+    setFullName(profile.full_name || '');
+    setBusinessName(profile.company_name || '');
+    setNotifications({
+      emailNotifications: profile.notification_preferences?.emailNotifications ?? true,
+      projectUpdates: profile.notification_preferences?.projectUpdates ?? true,
+      clientMessages: profile.notification_preferences?.clientMessages ?? true,
+      teamActivity: profile.notification_preferences?.teamActivity ?? true,
+      invoiceReminders: profile.notification_preferences?.invoiceReminders ?? true,
+      marketingEmails: profile.notification_preferences?.marketingEmails ?? false,
+    });
+  }, [profile]);
 
   const toggleTheme = () => {
     const newDark = !isDark;
@@ -108,11 +133,11 @@ const Settings = () => {
   const handleSaveProfile = async () => {
     setIsLoading(true);
     try {
-      try {
-        localStorage.setItem('profileSettings', JSON.stringify({ fullName, businessName }));
-      } catch {
-        // Ignore storage errors on restricted browsers/modes
-      }
+      const { error } = await updateProfile({
+        full_name: fullName.trim() || null,
+        company_name: businessName.trim() || null,
+      });
+      if (error) throw error;
       toast.success('Profile updated successfully');
     } catch (error) {
       toast.error('Failed to update profile');
@@ -121,13 +146,60 @@ const Settings = () => {
     }
   };
 
-  const handleSaveNotifications = () => {
+  const handleSaveNotifications = async () => {
     try {
-      localStorage.setItem('notificationSettings', JSON.stringify(notifications));
-    } catch {
-      // Ignore storage errors on restricted browsers/modes
+      const { error } = await updateProfile({
+        notification_preferences: notifications,
+      });
+      if (error) throw error;
+      toast.success('Notification preferences saved');
+    } catch (error) {
+      toast.error('Failed to save notification preferences');
     }
-    toast.success('Notification preferences saved');
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Avatar must be 2MB or smaller');
+      event.target.value = '';
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+
+    try {
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${user.id}/${Date.now()}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+      const { error: profileError } = await updateProfile({ avatar_url: data.publicUrl });
+      if (profileError) throw profileError;
+
+      toast.success('Avatar updated successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+      event.target.value = '';
+    }
   };
 
   const handleUpdatePassword = async () => {
@@ -188,7 +260,58 @@ const Settings = () => {
     navigate('/pricing');
   };
 
-  const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
+  const handleDeleteAccount = async () => {
+    if (!user?.email) {
+      toast.error('No account email found');
+      return;
+    }
+
+    if (deleteAccountEmail.trim().toLowerCase() !== user.email.toLowerCase()) {
+      toast.error('Enter your account email to confirm deletion');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Not authenticated');
+      }
+
+      const { data, error } = await supabase.functions.invoke('delete-account', {
+        body: { confirmEmail: deleteAccountEmail.trim() },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (error) {
+        throw new Error(data?.error || error.message || 'Failed to delete account');
+      }
+
+      clearPendingInvite();
+      try {
+        await signOut();
+      } catch {
+        // The auth record may already be gone at this point.
+      }
+
+      toast.success('Your account has been deleted');
+      navigate('/', { replace: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete account';
+      toast.error(message);
+    } finally {
+      setIsDeletingAccount(false);
+      setDeleteAccountOpen(false);
+      setDeleteAccountEmail('');
+    }
+  };
+
+  const userInitial = (profile?.full_name || user?.email || 'U').charAt(0).toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -231,13 +354,27 @@ const Settings = () => {
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src="" />
+                  <AvatarImage src={profile?.avatar_url || undefined} />
                   <AvatarFallback className="text-2xl bg-primary/10 text-primary">
                     {userInitial}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <Button variant="outline" size="sm">Change Avatar</Button>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp"
+                    className="hidden"
+                    onChange={handleAvatarChange}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploadingAvatar}
+                    onClick={() => avatarInputRef.current?.click()}
+                  >
+                    {isUploadingAvatar ? 'Uploading...' : 'Change Avatar'}
+                  </Button>
                   <p className="text-xs text-muted-foreground mt-1">JPG, PNG or GIF. Max 2MB.</p>
                 </div>
               </div>
@@ -470,6 +607,28 @@ const Settings = () => {
             </Card>
             
             <TwoFactorSetup />
+
+            <Card className="border-destructive/40">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <TriangleAlert className="h-5 w-5" />
+                  Delete Account
+                </CardTitle>
+                <CardDescription>
+                  Permanently delete your account, remove your profile, and leave all workspaces you do not own.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm text-muted-foreground">
+                  If you own any workspaces, you will need to transfer or delete them first. This action cannot be undone.
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="destructive" onClick={() => setDeleteAccountOpen(true)}>
+                    Delete Account
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
@@ -569,16 +728,8 @@ const Settings = () => {
                       <RefreshCw className={`h-4 w-4 ${subLoading ? 'animate-spin' : ''}`} />
                     </Button>
                   </div>
-                  <p className="hidden">
-                    {isTeam 
-                      ? `Team plan active${subscriptionEnd ? ` · Renews ${new Date(subscriptionEnd).toLocaleDateString()}` : ''}`
-                      : 'Free plan with basic features'}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {isTeam
-                      ? `${PLAN_DEFINITIONS.team.name} plan active${subscriptionEnd ? ` · Renews ${new Date(subscriptionEnd).toLocaleDateString()}` : ''}`
-                      : `${PLAN_DEFINITIONS.solo.priceLabel} plan with core features`}
-                  </p>
+                  <p className="hidden">{subscriptionStatusLabel}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{subscriptionStatusLabel}</p>
                 </div>
                 {isTeam ? (
                   <Button variant="outline" onClick={async () => {
@@ -678,6 +829,42 @@ const Settings = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={deleteAccountOpen} onOpenChange={setDeleteAccountOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes your login and profile. Type <strong>{user?.email}</strong> to confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="deleteAccountEmail">Confirm email</Label>
+            <Input
+              id="deleteAccountEmail"
+              type="email"
+              value={deleteAccountEmail}
+              onChange={(event) => setDeleteAccountEmail(event.target.value)}
+              placeholder={user?.email || 'you@example.com'}
+            />
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAccount}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async (event) => {
+                event.preventDefault();
+                await handleDeleteAccount();
+              }}
+              disabled={isDeletingAccount}
+            >
+              {isDeletingAccount ? 'Deleting...' : 'Delete account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

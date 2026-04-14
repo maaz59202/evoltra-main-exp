@@ -126,7 +126,7 @@ export const funnelTemplates: FunnelTemplate[] = [
           order: 1,
           parentId: sectionId,
           props: {
-            content: 'Enter your email below and we\'ll send you our exclusive guide — packed with actionable tips to grow your business.',
+            content: 'Enter your email below and we\'ll send you our exclusive guide, packed with actionable tips to grow your business.',
             fontSize: 16,
             fontWeight: 'normal' as const,
             color: '#475569',
@@ -195,7 +195,7 @@ export const funnelTemplates: FunnelTemplate[] = [
           order: 0,
           parentId: sectionId,
           props: {
-            content: 'Limited Time Offer — 50% Off',
+            content: 'Limited Time Offer: 50% Off',
             level: 'h2' as const,
             fontSize: 36,
             color: '#ffffff',

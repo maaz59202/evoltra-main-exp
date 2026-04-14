@@ -15,7 +15,7 @@ const Footer = () => {
             </Link>
             <p className="text-muted-foreground max-w-sm">
               The all-in-one SaaS platform for freelancers and agencies. Manage projects, 
-              clients, and build stunning funnels—all in one place.
+              clients, and build stunning funnels, all in one place.
             </p>
           </div>
 

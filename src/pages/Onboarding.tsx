@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PLAN_DEFINITIONS } from '@/data/productCopy';
+import { getPendingInvite } from '@/lib/pendingInvite';
 import { Loader2, ArrowLeft, ArrowRight, User, Building, Target, Check } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 type Mode = 'solo' | 'team';
 
@@ -27,11 +29,50 @@ const Onboarding = () => {
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   
-  const { updateProfile } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
   const totalSteps = 3;
+
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const pendingInvite = getPendingInvite();
+    if (!pendingInvite || pendingInvite.email.toLowerCase() !== user.email.toLowerCase()) {
+      return;
+    }
+
+    let isActive = true;
+
+    const redirectInvitee = async () => {
+      const { data, error } = await supabase
+        .from('organization_members')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (!isActive) return;
+
+      if (error) {
+        console.error('Error checking invitee membership during onboarding:', error);
+        navigate(pendingInvite.path, { replace: true });
+        return;
+      }
+
+      const roles = (data || []).map((membership) => membership.role);
+      const isInvitee = roles.some((role) => role === 'admin' || role === 'member');
+
+      if (isInvitee || roles.length === 0) {
+        navigate(pendingInvite.path, { replace: true });
+      }
+    };
+
+    redirectInvitee();
+
+    return () => {
+      isActive = false;
+    };
+  }, [navigate, user]);
 
   const toggleGoal = (goal: string) => {
     setSelectedGoals(prev => 
@@ -68,7 +109,8 @@ const Onboarding = () => {
     setLoading(true);
 
     const { error } = await updateProfile({
-      mode,
+      // Team access is granted by Stripe subscription state, not onboarding choice.
+      mode: 'solo',
       company_name: companyName,
       goals: selectedGoals,
       onboarding_completed: true
@@ -90,6 +132,12 @@ const Onboarding = () => {
         ? `Complete your ${PLAN_DEFINITIONS.team.name} subscription to unlock all features.` 
         : 'Your account is all set up.'
     });
+
+    const pendingInvite = getPendingInvite();
+    if (pendingInvite?.path) {
+      navigate(pendingInvite.path, { replace: true });
+      return;
+    }
 
     // Team mode users need to subscribe before getting team features
     navigate(mode === 'team' ? '/pricing' : '/dashboard');

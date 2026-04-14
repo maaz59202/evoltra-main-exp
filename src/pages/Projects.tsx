@@ -12,6 +12,7 @@ import ProjectCard from '@/components/projects/ProjectCard';
 import CreateProjectDialog from '@/components/projects/CreateProjectDialog';
 import CreateOrganizationDialog from '@/components/organizations/CreateOrganizationDialog';
 import { useProjects } from '@/hooks/useProjects';
+import { ROLE_PERMISSIONS } from '@/data/productCopy';
 import { Plus, Search, FolderOpen, Loader2, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +47,21 @@ const Projects = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOrgDialog, setShowOrgDialog] = useState(false);
   const [showDeleteOrgDialog, setShowDeleteOrgDialog] = useState(false);
+  const selectedOrganization = organizations.find((organization) => organization.id === selectedOrgId) || null;
+  const selectedPermissions = selectedOrganization?.role ? ROLE_PERMISSIONS[selectedOrganization.role] : null;
+  const organizationPermissions = new Map(
+    organizations
+      .filter((organization) => organization.role)
+      .map((organization) => [organization.id, ROLE_PERMISSIONS[organization.role!]])
+  );
+  const manageableOrganizations = organizations.filter(
+    (organization) => organization.role && ROLE_PERMISSIONS[organization.role].manageProjects
+  );
+  const canCreateProject =
+    selectedOrgId
+      ? !!selectedPermissions?.manageProjects
+      : manageableOrganizations.length > 0;
+  const canDeleteSelectedOrganization = selectedOrganization?.role === 'owner';
 
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -85,7 +101,7 @@ const Projects = () => {
             <Building2 className="w-4 h-4 mr-2" />
             New Organization
           </Button>
-          <Button onClick={() => setShowCreateDialog(true)} className="gradient-primary text-white w-full md:w-auto">
+          <Button onClick={() => setShowCreateDialog(true)} className="gradient-primary text-white w-full md:w-auto" disabled={!canCreateProject}>
             <Plus className="w-4 h-4 mr-2" />
             New Project
           </Button>
@@ -106,12 +122,16 @@ const Projects = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Select value={selectedOrgId || ''} onValueChange={setSelectedOrgId}>
+            <Select
+              value={selectedOrgId || 'all'}
+              onValueChange={(value) => setSelectedOrgId(value === 'all' ? null : value)}
+            >
               <SelectTrigger className="w-full sm:w-[240px]">
                 <Building2 className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="All Organizations" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="all">All Organizations</SelectItem>
                 {organizations.map((org) => (
                   <SelectItem key={org.id} value={org.id}>
                     {org.name}
@@ -123,7 +143,7 @@ const Projects = () => {
               variant="destructive"
               className="w-full sm:w-auto"
               onClick={() => setShowDeleteOrgDialog(true)}
-              disabled={!selectedOrgId}
+              disabled={!selectedOrgId || !canDeleteSelectedOrganization}
             >
               Delete Org
             </Button>
@@ -159,7 +179,7 @@ const Projects = () => {
               Create Organization
             </Button>
           ) : organizations.length > 0 && !searchQuery ? (
-            <Button onClick={() => setShowCreateDialog(true)}>
+            <Button onClick={() => setShowCreateDialog(true)} disabled={!canCreateProject}>
               <Plus className="w-4 h-4 mr-2" />
               Create Project
             </Button>
@@ -168,12 +188,22 @@ const Projects = () => {
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredProjects.map((project) => (
+            (() => {
+              const projectPermissions = project.organization_id
+                ? organizationPermissions.get(project.organization_id)
+                : null;
+
+              return (
             <ProjectCard
               key={project.id}
               project={project}
               onUpdate={handleUpdate}
               onDelete={handleDelete}
+              canManage={!!projectPermissions?.manageProjects}
+              canManageClients={!!projectPermissions?.manageClients}
             />
+              );
+            })()
           ))}
         </div>
       )}
@@ -181,7 +211,7 @@ const Projects = () => {
       <CreateProjectDialog
         open={showCreateDialog}
         onOpenChange={setShowCreateDialog}
-        organizations={organizations}
+        organizations={manageableOrganizations}
         selectedOrgId={selectedOrgId}
         onCreate={handleCreate}
       />

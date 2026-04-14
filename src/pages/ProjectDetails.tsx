@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { useOrganizationPermissions } from '@/hooks/useOrganizationPermissions';
 
 interface Project {
   id: string;
@@ -57,6 +58,7 @@ const ProjectDetails = () => {
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('messages');
+  const { permissions } = useOrganizationPermissions(project?.organization_id);
 
   useEffect(() => {
     if (projectId && user) {
@@ -71,7 +73,7 @@ const ProjectDetails = () => {
         .from('projects')
         .select('*')
         .eq('id', projectId)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
       setProject(data);
@@ -185,15 +187,9 @@ const ProjectDetails = () => {
         </TabsList>
 
         <TabsContent value="messages">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Client Messages</CardTitle>
-              <CardDescription>
-                Communicate with your clients about this project
-              </CardDescription>
-            </CardHeader>
+          <Card className="overflow-hidden border-border/60 bg-card/92 shadow-[0_14px_40px_rgba(2,6,23,0.18)]">
             <CardContent className="p-0">
-              <ProjectMessages projectId={project.id} />
+              <ProjectMessages projectId={project.id} clientCount={clients.length} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -207,11 +203,13 @@ const ProjectDetails = () => {
                   Clients who have access to view this project
                 </CardDescription>
               </div>
-              <InviteClientDialog 
-                projectId={project.id} 
-                projectName={project.name}
-                onInvited={fetchClients}
-              />
+              {permissions.manageClients && (
+                <InviteClientDialog 
+                  projectId={project.id} 
+                  projectName={project.name}
+                  onInvited={fetchClients}
+                />
+              )}
             </CardHeader>
             <CardContent>
               {clients.length === 0 ? (
@@ -242,6 +240,7 @@ const ProjectDetails = () => {
                         <Badge variant={client.password_set ? 'default' : 'secondary'}>
                           {client.password_set ? 'Active' : 'Pending'}
                         </Badge>
+                        {permissions.manageClients && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button variant="outline" size="sm">
@@ -261,6 +260,34 @@ const ProjectDetails = () => {
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 onClick={async () => {
                                   try {
+                                    const fallbackClientName = client.full_name || client.email;
+
+                                    if (client.clientUserId) {
+                                      const messageUpdate = supabase
+                                        .from('project_messages')
+                                        .update({
+                                          client_sender_id: client.clientUserId,
+                                          sender_name: fallbackClientName,
+                                        })
+                                        .eq('project_id', project.id)
+                                        .eq('sender_type', 'client')
+                                        .or(`client_sender_id.eq.${client.clientUserId},client_sender_id.is.null`);
+
+                                      if (clients.length === 1) {
+                                        await messageUpdate;
+                                      } else {
+                                        await supabase
+                                          .from('project_messages')
+                                          .update({
+                                            client_sender_id: client.clientUserId,
+                                            sender_name: fallbackClientName,
+                                          })
+                                          .eq('project_id', project.id)
+                                          .eq('sender_type', 'client')
+                                          .eq('client_sender_id', client.clientUserId);
+                                      }
+                                    }
+
                                     const { error } = await supabase
                                       .from('project_clients')
                                       .delete()
@@ -280,6 +307,7 @@ const ProjectDetails = () => {
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -22,6 +22,8 @@ const TwoFactorSetup = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [enrolledFactorId, setEnrolledFactorId] = useState<string | null>(null);
+  const [showDisablePrompt, setShowDisablePrompt] = useState(false);
+  const [disableCode, setDisableCode] = useState('');
 
   useEffect(() => {
     checkMfaStatus();
@@ -103,9 +105,25 @@ const TwoFactorSetup = () => {
 
   const handleUnenroll = async () => {
     if (!enrolledFactorId) return;
+    if (disableCode.length !== 6) {
+      toast.error('Enter the 6-digit authenticator code to disable 2FA');
+      return;
+    }
 
     setIsUnenrolling(true);
     try {
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({
+        factorId: enrolledFactorId,
+      });
+      if (challengeError) throw challengeError;
+
+      const { error: verifyError } = await supabase.auth.mfa.verify({
+        factorId: enrolledFactorId,
+        challengeId: challenge.id,
+        code: disableCode,
+      });
+      if (verifyError) throw verifyError;
+
       const { error } = await supabase.auth.mfa.unenroll({
         factorId: enrolledFactorId,
       });
@@ -116,6 +134,8 @@ const TwoFactorSetup = () => {
       setStep('idle');
       setQrCode('');
       setSecret('');
+      setDisableCode('');
+      setShowDisablePrompt(false);
       toast.success('Two-factor authentication has been disabled');
     } catch (error: any) {
       toast.error(error.message || 'Failed to disable 2FA');
@@ -137,11 +157,13 @@ const TwoFactorSetup = () => {
       } catch {}
     }
     setStep('idle');
-    setQrCode('');
-    setSecret('');
-    setFactorId('');
-    setVerifyCode('');
-  };
+      setQrCode('');
+      setSecret('');
+      setFactorId('');
+      setVerifyCode('');
+      setDisableCode('');
+      setShowDisablePrompt(false);
+    };
 
   if (isLoading && step === 'idle') {
     return (
@@ -280,16 +302,48 @@ const TwoFactorSetup = () => {
 
         {/* Enrolled State - Show Disable Button */}
         {step === 'enrolled' && (
-          <Button variant="destructive" onClick={handleUnenroll} disabled={isUnenrolling}>
-            {isUnenrolling ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Disabling...
-              </>
+          <div className="space-y-4">
+            {showDisablePrompt ? (
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+                <div>
+                  <p className="font-medium">Confirm 2FA removal</p>
+                  <p className="text-sm text-muted-foreground">
+                    Enter a fresh 6-digit code from your authenticator app to disable two-factor authentication.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="disableCode">Authenticator Code</Label>
+                  <Input
+                    id="disableCode"
+                    value={disableCode}
+                    onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    maxLength={6}
+                    className="max-w-xs text-center text-lg tracking-widest font-mono"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setShowDisablePrompt(false); setDisableCode(''); }}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={handleUnenroll} disabled={isUnenrolling || disableCode.length !== 6}>
+                    {isUnenrolling ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Disabling...
+                      </>
+                    ) : (
+                      'Confirm Disable'
+                    )}
+                  </Button>
+                </div>
+              </div>
             ) : (
-              'Disable 2FA'
+              <Button variant="destructive" onClick={() => setShowDisablePrompt(true)}>
+                Disable 2FA
+              </Button>
             )}
-          </Button>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,8 +1,17 @@
+import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -12,113 +21,81 @@ Deno.serve(async (req: Request) => {
   try {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
-      return new Response(
-        JSON.stringify({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: "stripe_not_configured" }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return json({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: "stripe_not_configured" });
     }
 
-    // Extract email from JWT
-    const authHeader = req.headers.get("Authorization") ?? "";
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return json({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: "unauthorized" }, 401);
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } },
+    );
+
     const token = authHeader.replace("Bearer ", "");
-    let userEmail = "";
-    try {
-      const parts = token.split(".");
-      if (parts.length === 3) {
-        // Base64url decode
-        let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-        while (b64.length % 4) b64 += "=";
-        const decoded = atob(b64);
-        const payload = JSON.parse(decoded);
-        userEmail = String(payload.email ?? "");
-      }
-    } catch (_e) {
-      // ignore decode errors
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user?.email) {
+      return json({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: "no_email" }, 401);
     }
 
-    if (!userEmail) {
-      return new Response(
-        JSON.stringify({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: "no_email" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const customers = await stripe.customers.list({ email: user.email, limit: 10 });
+
+    const prioritizedCustomers = customers.data.sort((left, right) => {
+      const leftMatch = left.metadata?.supabase_user_id === user.id ? 1 : 0;
+      const rightMatch = right.metadata?.supabase_user_id === user.id ? 1 : 0;
+      return rightMatch - leftMatch;
+    });
+
+    if (prioritizedCustomers.length === 0) {
+      return json({ subscribed: false, plan: "solo", product_id: null, subscription_end: null });
+    }
+
+    for (const customer of prioritizedCustomers) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: customer.id,
+        limit: 20,
+        status: "all",
+      });
+
+      const activeSubscription = subscriptions.data.find((subscription) =>
+        ["active", "trialing", "past_due", "unpaid"].includes(subscription.status),
       );
-    }
 
-    // Find Stripe customer
-    const custRes = await fetch(
-      `https://api.stripe.com/v1/customers?email=${encodeURIComponent(userEmail)}&limit=1`,
-      { headers: { Authorization: `Bearer ${stripeKey}` } }
-    );
-    const custText = await custRes.text();
-    let custData: any;
-    try { custData = JSON.parse(custText); } catch { custData = {}; }
-
-    if (!custData?.data?.length) {
-      return new Response(
-        JSON.stringify({ subscribed: false, plan: "solo", product_id: null, subscription_end: null }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const customerId = custData.data[0].id;
-
-    // List active subscriptions
-    const subRes = await fetch(
-      `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(customerId)}&status=active&limit=1`,
-      { headers: { Authorization: `Bearer ${stripeKey}` } }
-    );
-    const subText = await subRes.text();
-    let subData: any;
-    try { subData = JSON.parse(subText); } catch { subData = {}; }
-
-    if (!subData?.data?.length) {
-      return new Response(
-        JSON.stringify({ subscribed: false, plan: "solo", product_id: null, subscription_end: null }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const sub = subData.data[0];
-
-    // Safely get subscription end - avoid any Date usage that could throw
-    let subscriptionEnd: string | null = null;
-    const pe = sub.current_period_end;
-    if (typeof pe === "number" && Number.isFinite(pe) && pe > 0) {
-      try {
-        const d = new Date(pe * 1000);
-        if (Number.isFinite(d.getTime())) {
-          subscriptionEnd = d.toISOString();
-        }
-      } catch {
-        subscriptionEnd = null;
+      if (!activeSubscription) {
+        continue;
       }
-    }
 
-    // Safely get product ID
-    let productId: string | null = null;
-    try {
-      const items = sub.items?.data;
-      if (Array.isArray(items) && items.length > 0) {
-        const p = items[0]?.plan?.product ?? items[0]?.price?.product;
-        if (typeof p === "string") productId = p;
-      }
-    } catch {
-      productId = null;
-    }
+      const currentPeriodEnd =
+        activeSubscription.items.data[0]?.current_period_end || activeSubscription.current_period_end || null;
+      const subscriptionEnd =
+        typeof currentPeriodEnd === "number" ? new Date(currentPeriodEnd * 1000).toISOString() : null;
+      const productId =
+        activeSubscription.items.data[0]?.price?.product && typeof activeSubscription.items.data[0]?.price?.product === "string"
+          ? activeSubscription.items.data[0].price.product
+          : null;
 
-    return new Response(
-      JSON.stringify({
+      return json({
         subscribed: true,
         plan: "team",
         product_id: productId,
         subscription_end: subscriptionEnd,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+        cancel_at_period_end: activeSubscription.cancel_at_period_end ?? false,
+        customer_id: customer.id,
+        subscription_status: activeSubscription.status,
+      });
+    }
+
+    return json({ subscribed: false, plan: "solo", product_id: null, subscription_end: null });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    return new Response(
-      JSON.stringify({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: msg }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return json({ subscribed: false, plan: "solo", product_id: null, subscription_end: null, error: msg });
   }
 });

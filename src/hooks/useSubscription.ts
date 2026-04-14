@@ -17,6 +17,8 @@ export interface SubscriptionStatus {
   plan: 'solo' | 'team';
   productId: string | null;
   subscriptionEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  subscriptionStatus: string | null;
   loading: boolean;
   error: string | null;
 }
@@ -28,6 +30,8 @@ export const useSubscription = () => {
     plan: 'solo',
     productId: null,
     subscriptionEnd: null,
+    cancelAtPeriodEnd: false,
+    subscriptionStatus: null,
     loading: true,
     error: null,
   });
@@ -55,6 +59,8 @@ export const useSubscription = () => {
           plan: 'solo',
           productId: null,
           subscriptionEnd: null,
+          cancelAtPeriodEnd: false,
+          subscriptionStatus: null,
           loading: false,
           error: null, // Don't surface this as a user-facing error
         });
@@ -66,6 +72,8 @@ export const useSubscription = () => {
         plan: data.plan || 'solo',
         productId: data.product_id ?? null,
         subscriptionEnd: data.subscription_end ?? null,
+        cancelAtPeriodEnd: Boolean(data.cancel_at_period_end),
+        subscriptionStatus: data.subscription_status ?? null,
         loading: false,
         error: null,
       });
@@ -76,6 +84,8 @@ export const useSubscription = () => {
         plan: 'solo',
         productId: null,
         subscriptionEnd: null,
+        cancelAtPeriodEnd: false,
+        subscriptionStatus: null,
         loading: false,
         error: null, // Silently handle - don't break the UI
       });
@@ -102,9 +112,9 @@ export const useSubscription = () => {
 
   // Poll for subscription update after payment (retries every 2s, up to 30s)
   const waitForSubscriptionUpdate = useCallback(async () => {
-    const maxAttempts = 5;
+    const maxAttempts = 15;
     for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 2000));
       
       if (!session?.access_token) break;
       
@@ -113,12 +123,14 @@ export const useSubscription = () => {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
         
-        if (data?.subscribed) {
+        if (data?.subscribed && data?.plan === 'team') {
           setStatus({
             subscribed: true,
-            plan: data.plan || 'team',
+            plan: 'team',
             productId: data.product_id ?? null,
             subscriptionEnd: data.subscription_end ?? null,
+            cancelAtPeriodEnd: Boolean(data.cancel_at_period_end),
+            subscriptionStatus: data.subscription_status ?? null,
             loading: false,
             error: null,
           });
@@ -158,6 +170,8 @@ export const useSubscription = () => {
         plan: 'solo',
         productId: null,
         subscriptionEnd: null,
+        cancelAtPeriodEnd: false,
+        subscriptionStatus: null,
         loading: false,
         error: null,
       });
@@ -180,5 +194,6 @@ export const useSubscription = () => {
     waitForSubscriptionUpdate,
     isTeam: status.plan === 'team',
     isSolo: status.plan === 'solo',
+    isPendingDowngrade: status.plan === 'team' && status.cancelAtPeriodEnd,
   };
 };

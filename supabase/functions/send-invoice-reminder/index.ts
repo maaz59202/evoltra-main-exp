@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import nodemailer from "npm:nodemailer@6.9.9";
+import { Resend } from "npm:resend@2.0.0";
+import { decryptJsonValue } from "../_shared/payment-encryption.ts";
+import { parsePaymentReceivingDetails } from "../_shared/payment-receiving.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,6 +15,20 @@ interface InvoiceReminderRequest {
   invoiceId: string;
   reminderType: "initial" | "reminder" | "overdue";
 }
+
+const currencySymbols: Record<string, string> = {
+  USD: "$",
+  PKR: "Rs",
+  EUR: "€",
+  GBP: "£",
+  AED: "AED",
+};
+
+const formatInvoiceAmount = (amount: number, currency?: string | null) => {
+  const normalizedCurrency = (currency || "USD").toUpperCase();
+  const symbol = currencySymbols[normalizedCurrency] || normalizedCurrency;
+  return `${symbol}${Number(amount).toFixed(2)}`;
+};
 
 const getUserIdFromAuthHeader = (authHeader: string | null) => {
   if (!authHeader?.startsWith("Bearer ")) {
@@ -44,13 +60,13 @@ serve(async (req: Request) => {
       );
     }
 
-    const gmailUser = Deno.env.get("GMAIL_USER");
-    const gmailPass = Deno.env.get("GMAIL_APP_PASSWORD");
-    if (!gmailUser || !gmailPass) {
-      console.log("Gmail SMTP not configured, skipping email");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Evoltra Billing <noreply@contact.evoltra.site>";
+    if (!resendApiKey) {
+      console.log("Resend is not configured");
       return new Response(
-        JSON.stringify({ message: "Email service not configured" }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: "Email service not configured" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
@@ -67,7 +83,7 @@ serve(async (req: Request) => {
       .select(`
         *,
         client:clients(id, name, email),
-        organization:organizations(name)
+        organization:organizations(name, payment_receiving_details, payment_account_name, payment_account_number, payment_bank_name, payment_link)
       `)
       .eq("id", invoiceId)
       .single();
@@ -103,6 +119,18 @@ serve(async (req: Request) => {
       );
     }
 
+    const decryptedPaymentDetails = await decryptJsonValue(invoice.organization?.payment_receiving_details);
+    const paymentReceivingDetails = parsePaymentReceivingDetails(decryptedPaymentDetails);
+
+    if (!paymentReceivingDetails) {
+      return new Response(
+        JSON.stringify({
+          error: "Payment receiving details are incomplete. Add a valid payment method in Billing before sending invoice emails.",
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const subjects = {
       initial: `Invoice ${invoice.invoice_number} from ${invoice.organization?.name || "Evoltra"}`,
       reminder: `Reminder: Invoice ${invoice.invoice_number} - Payment Due`,
@@ -114,6 +142,24 @@ serve(async (req: Request) => {
           year: "numeric", month: "long", day: "numeric" 
         })
       : "No due date specified";
+    const formattedTotal = formatInvoiceAmount(Number(invoice.total), invoice.currency);
+    const origin =
+      req.headers.get("origin") ||
+      Deno.env.get("PUBLIC_SITE_URL") ||
+      Deno.env.get("SITE_URL") ||
+      Deno.env.get("APP_URL") ||
+      "https://evoltra.site";
+    const invoiceUrl = `${origin.replace(/\/$/, "")}/client/invoice/${invoice.id}`;
+    const invoiceCallToAction = `
+      <div style="margin: 28px 0;">
+        <a href="${invoiceUrl}" style="display: inline-block; background: #7c5cff; color: white; padding: 14px 22px; border-radius: 10px; text-decoration: none; font-weight: 600;">
+          View Invoice
+        </a>
+      </div>
+      <p style="margin: 12px 0 0; color: #52525b;">
+        Payment details are available securely inside your client portal invoice view.
+      </p>
+    `;
 
     const emailContent = {
       initial: `
@@ -122,11 +168,12 @@ serve(async (req: Request) => {
         <p>Please find your invoice from ${invoice.organization?.name || "Evoltra"} below:</p>
         <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
-          <p><strong>Amount Due:</strong> $${Number(invoice.total).toFixed(2)}</p>
+          <p><strong>Amount Due:</strong> ${formattedTotal}</p>
           <p><strong>Due Date:</strong> ${dueDate}</p>
         </div>
+        ${invoiceCallToAction}
         ${invoice.notes ? `<p><strong>Notes:</strong> ${invoice.notes}</p>` : ""}
-        <p>Thank you for your business!</p>
+        <p>Thank you for trusting ${invoice.organization?.name || "Evoltra"}</p>
       `,
       reminder: `
         <h1>Payment Reminder</h1>
@@ -134,9 +181,10 @@ serve(async (req: Request) => {
         <p>This is a friendly reminder that payment for the following invoice is due:</p>
         <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
-          <p><strong>Amount Due:</strong> $${Number(invoice.total).toFixed(2)}</p>
+          <p><strong>Amount Due:</strong> ${formattedTotal}</p>
           <p><strong>Due Date:</strong> ${dueDate}</p>
         </div>
+        ${invoiceCallToAction}
         <p>Please arrange for payment at your earliest convenience.</p>
         <p>If you have already made this payment, please disregard this reminder.</p>
       `,
@@ -146,35 +194,41 @@ serve(async (req: Request) => {
         <p>Our records indicate that the following invoice is now overdue:</p>
         <div style="background-color: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0;">
           <p><strong>Invoice Number:</strong> ${invoice.invoice_number}</p>
-          <p><strong>Amount Due:</strong> $${Number(invoice.total).toFixed(2)}</p>
+          <p><strong>Amount Due:</strong> ${formattedTotal}</p>
           <p><strong>Original Due Date:</strong> ${dueDate}</p>
         </div>
+        ${invoiceCallToAction}
         <p>Please arrange for immediate payment to avoid any service interruptions.</p>
         <p>If you have any questions or concerns, please contact us immediately.</p>
       `,
     };
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: { user: gmailUser, pass: gmailPass },
-    });
-
-    const info = await transporter.sendMail({
-      from: `"Evoltra Billing" <${gmailUser}>`,
+    const resend = new Resend(resendApiKey);
+    const emailResult = await resend.emails.send({
+      from: fromEmail,
       to: invoice.client.email,
       subject: subjects[reminderType],
       html: emailContent[reminderType],
     });
 
-    console.log("Email sent successfully:", info.messageId);
+    if (emailResult?.error) {
+      console.error("Resend send failed:", emailResult.error);
+      return new Response(
+        JSON.stringify({
+          error: typeof emailResult.error === "string" ? emailResult.error : "Failed to send email",
+          providerError: emailResult.error,
+        }),
+        { status: 502, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    console.log("Email sent successfully:", emailResult?.data?.id);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: `${reminderType} email sent successfully`,
-        emailId: info.messageId 
+        emailId: emailResult?.data?.id ?? null
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

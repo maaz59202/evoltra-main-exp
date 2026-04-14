@@ -6,6 +6,8 @@ export interface ProjectMessage {
   id: string;
   project_id: string | null;
   sender_id: string | null;
+  client_sender_id?: string | null;
+  sender_name?: string | null;
   sender_type: string;
   message: string;
   created_at: string | null;
@@ -13,7 +15,7 @@ export interface ProjectMessage {
 }
 
 export const useProjectMessages = (projectId: string | null) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [messages, setMessages] = useState<ProjectMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,12 +51,41 @@ export const useProjectMessages = (projectId: string | null) => {
           acc[p.user_id] = p.full_name || p.email || 'Team Member';
           return acc;
         }, {} as Record<string, string>);
+
+        const missingFreelancerIds = freelancerIds.filter((id) => !profilesMap[id]);
+        if (missingFreelancerIds.length > 0) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (session?.access_token) {
+            const { data: identityData, error: identityError } = await supabase.functions.invoke('resolve-user-identities', {
+              body: { userIds: missingFreelancerIds },
+              headers: {
+                Authorization: `Bearer ${session.access_token}`,
+              },
+            });
+
+            if (identityError) {
+              console.warn('Failed to resolve missing message sender identities:', identityError);
+            } else {
+              Object.entries(identityData?.identities || {}).forEach(([userId, identity]: [string, any]) => {
+                profilesMap[userId] = identity.full_name || identity.email || 'Team Member';
+              });
+            }
+          }
+        }
       }
 
       // Fetch client names
-      const clientIds = data
-        ?.filter(m => m.sender_type === 'client' && m.sender_id)
-        .map(m => m.sender_id) || [];
+      const clientIds = Array.from(
+        new Set(
+          data
+            ?.filter((m) => m.sender_type === 'client')
+            .map((m) => m.client_sender_id || m.sender_id)
+            .filter(Boolean) || [],
+        ),
+      ) as string[];
 
       if (clientIds.length > 0) {
         const { data: clients } = await supabase
@@ -69,7 +100,11 @@ export const useProjectMessages = (projectId: string | null) => {
 
       const messagesWithNames = (data || []).map(m => ({
         ...m,
-        senderName: m.sender_id ? profilesMap[m.sender_id] : (m.sender_type === 'client' ? 'Client' : 'Unknown'),
+        senderName:
+          m.sender_name ||
+          (m.sender_type === 'client'
+            ? (m.client_sender_id ? profilesMap[m.client_sender_id] : undefined) || 'Client'
+            : (m.sender_id ? profilesMap[m.sender_id] : undefined) || 'Unknown'),
       }));
 
       setMessages(messagesWithNames);
@@ -84,18 +119,43 @@ export const useProjectMessages = (projectId: string | null) => {
     if (!user || !projectId || !message.trim()) return null;
 
     try {
+      const trimmedMessage = message.trim();
+
       const { data, error } = await supabase
         .from('project_messages')
         .insert({
           project_id: projectId,
           sender_id: user.id,
-          sender_type: 'user',
-          message: message.trim(),
+          sender_name: profile?.full_name || user.email || 'Team Member',
+          sender_type: 'freelancer',
+          message: trimmedMessage,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.access_token) {
+        const { error: emailError } = await supabase.functions.invoke('send-activity-email', {
+          body: {
+            type: 'project_update',
+            projectId,
+            message: trimmedMessage,
+            senderName: profile?.full_name || user.email || 'Your team',
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        });
+
+        if (emailError) {
+          console.warn('Project update email notification failed:', emailError);
+        }
+      }
 
       const newMessage: ProjectMessage = {
         ...data,
@@ -159,11 +219,14 @@ export const useProjectMessages = (projectId: string | null) => {
           
           // Fetch sender name for the new message
           let senderName = 'Unknown';
-          if (newMsg.sender_type === 'client' && newMsg.sender_id) {
+          if (newMsg.sender_name) {
+            senderName = newMsg.sender_name;
+          } else if (newMsg.sender_type === 'client' && (newMsg.client_sender_id || newMsg.sender_id)) {
+            const clientSenderId = newMsg.client_sender_id || newMsg.sender_id;
             const { data: clientData } = await supabase
               .from('client_users')
               .select('full_name, email')
-              .eq('id', newMsg.sender_id)
+              .eq('id', clientSenderId)
               .single();
             senderName = clientData?.full_name || clientData?.email || 'Client';
           } else if (newMsg.sender_type === 'client') {

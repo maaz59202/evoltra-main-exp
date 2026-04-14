@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -53,26 +52,29 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
 
   return (
     <>
-      <Card className={`p-4 ${isExpired ? 'opacity-60' : ''}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
-              <Mail className="w-5 h-5 text-muted-foreground" />
+      <div className={`rounded-2xl border border-border/60 bg-background/35 px-4 py-4 ${isExpired ? 'opacity-60' : ''}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background ring-1 ring-white/5">
+              <Mail className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div>
-              <p className="font-medium">{invite.email}</p>
+            <div className="min-w-0 space-y-1">
+              <p className="truncate text-base font-semibold">{invite.email}</p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-3 h-3" />
                 <span>{isExpired ? 'Expired' : `Expires ${expiresIn}`}</span>
               </div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/80">
+                Pending {invite.role} invite
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="capitalize">
+          <div className="flex items-center justify-between gap-2 sm:justify-end">
+            <Badge variant="outline" className="h-9 rounded-full px-3 capitalize">
               {invite.role}
             </Badge>
-            <Badge variant={isExpired ? 'destructive' : 'secondary'}>
+            <Badge variant={isExpired ? 'destructive' : 'secondary'} className="h-9 rounded-full px-3">
               {isExpired ? 'Expired' : 'Pending'}
             </Badge>
 
@@ -81,7 +83,7 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-9 w-9 rounded-full"
                   onClick={copyInviteLink}
                   disabled={isExpired}
                 >
@@ -94,7 +96,7 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  className="h-9 w-9 rounded-full text-destructive hover:text-destructive"
                   onClick={() => setShowCancelDialog(true)}
                 >
                   <X className="w-4 h-4" />
@@ -103,7 +105,7 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
         <AlertDialogContent>

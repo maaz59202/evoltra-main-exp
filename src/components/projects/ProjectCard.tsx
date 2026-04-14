@@ -29,6 +29,8 @@ interface ProjectCardProps {
   project: Project;
   onUpdate: (id: string, updates: Partial<Pick<Project, 'name' | 'status'>>) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  canManage: boolean;
+  canManageClients: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -38,7 +40,7 @@ const statusColors: Record<string, string> = {
   archived: 'bg-muted text-muted-foreground border-muted',
 };
 
-const ProjectCard = ({ project, onUpdate, onDelete }: ProjectCardProps) => {
+const ProjectCard = ({ project, onUpdate, onDelete, canManage, canManageClients }: ProjectCardProps) => {
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(project.name);
@@ -148,7 +150,7 @@ const ProjectCard = ({ project, onUpdate, onDelete }: ProjectCardProps) => {
             )}
           </div>
           
-          {!isEditing && (
+          {!isEditing && canManage && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -193,27 +195,31 @@ const ProjectCard = ({ project, onUpdate, onDelete }: ProjectCardProps) => {
               {project.created_at && format(new Date(project.created_at), 'MMM d, yyyy')}
             </span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowInviteDialog(true);
-            }}
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Invite Client
-          </Button>
+          {canManageClients && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowInviteDialog(true);
+              }}
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Invite Client
+            </Button>
+          )}
         </CardContent>
       </Card>
 
-      <InviteClientDialog
-        open={showInviteDialog}
-        onOpenChange={setShowInviteDialog}
-        projectId={project.id}
-        projectName={project.name}
-      />
+      {canManageClients && (
+        <InviteClientDialog
+          open={showInviteDialog}
+          onOpenChange={setShowInviteDialog}
+          projectId={project.id}
+          projectName={project.name}
+        />
+      )}
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>

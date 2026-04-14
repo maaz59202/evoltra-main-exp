@@ -51,6 +51,13 @@ serve(async (req) => {
     let customerId;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+      await stripe.customers.update(customerId, {
+        metadata: {
+          ...(customers.data[0].metadata || {}),
+          supabase_user_id: user.id,
+          supabase_email: user.email,
+        },
+      });
       logStep("Existing customer found", { customerId });
     } else {
       logStep("No existing customer, will create new");
@@ -63,9 +70,17 @@ serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
+        client_reference_id: user.id,
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
         ui_mode: "embedded",
+        subscription_data: {
+          metadata: {
+            supabase_user_id: user.id,
+            supabase_email: user.email,
+            requested_plan: "team",
+          },
+        },
         return_url: `${origin}/pricing?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
       });
 
@@ -80,8 +95,16 @@ serve(async (req) => {
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         customer_email: customerId ? undefined : user.email,
+        client_reference_id: user.id,
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
+        subscription_data: {
+          metadata: {
+            supabase_user_id: user.id,
+            supabase_email: user.email,
+            requested_plan: "team",
+          },
+        },
         success_url: `${origin}/pricing?checkout=success`,
         cancel_url: `${origin}/pricing?checkout=cancelled`,
       });

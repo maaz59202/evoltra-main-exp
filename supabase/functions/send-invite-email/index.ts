@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import nodemailer from "npm:nodemailer@6.9.9";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,10 +21,10 @@ serve(async (req) => {
   }
 
   try {
-    const gmailUser = Deno.env.get("GMAIL_USER");
-    const gmailPass = Deno.env.get("GMAIL_APP_PASSWORD");
-    if (!gmailUser || !gmailPass) {
-      throw new Error("Gmail SMTP credentials are not configured");
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "Evoltra <noreply@contact.evoltra.site>";
+    if (!resendApiKey) {
+      throw new Error("Resend is not configured");
     }
 
     const { to, inviterName, organizationName, role, inviteLink }: InviteEmailRequest = await req.json();
@@ -32,16 +32,6 @@ serve(async (req) => {
     if (!to || !organizationName || !inviteLink) {
       throw new Error("Missing required fields: to, organizationName, inviteLink");
     }
-
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    });
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -93,16 +83,22 @@ serve(async (req) => {
       </html>
     `;
 
-    const info = await transporter.sendMail({
-      from: `"Evoltra" <${gmailUser}>`,
+    const resend = new Resend(resendApiKey);
+    const result = await resend.emails.send({
+      from: fromEmail,
       to,
       subject: `You're invited to join ${organizationName} on Evoltra`,
       html: emailHtml,
     });
 
-    console.log("Email sent successfully:", info.messageId);
+    if (result?.error) {
+      console.error("Resend send failed:", result.error);
+      throw new Error(typeof result.error === "string" ? result.error : "Failed to send invite email");
+    }
 
-    return new Response(JSON.stringify({ success: true, messageId: info.messageId }), {
+    console.log("Email sent successfully:", result?.data?.id);
+
+    return new Response(JSON.stringify({ success: true, messageId: result?.data?.id ?? null }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

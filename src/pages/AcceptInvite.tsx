@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle2, XCircle, UserPlus, LogIn } from 'lucide-react';
 import { toast } from 'sonner';
+import { setStoredOrganizationId } from '@/lib/workspace';
+import { clearPendingInvite, setPendingInvite } from '@/lib/pendingInvite';
 
 interface InviteData {
   id: string;
@@ -28,6 +30,29 @@ const AcceptInvite = () => {
   const [accepting, setAccepting] = useState(false);
   const [invite, setInvite] = useState<InviteData | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const completeInviteeProfileSetup = async (userId: string) => {
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .update({ onboarding_completed: true })
+      .eq('user_id', userId);
+
+    if (profileError) {
+      throw profileError;
+    }
+  };
+
+  const markInviteAccepted = async (inviteId: string) => {
+    const { error: updateError } = await supabase
+      .from('team_invites')
+      .update({ accepted_at: new Date().toISOString() })
+      .eq('id', inviteId)
+      .is('accepted_at', null);
+
+    if (updateError) {
+      throw updateError;
+    }
+  };
 
   useEffect(() => {
     const fetchInvite = async () => {
@@ -56,21 +81,51 @@ const AcceptInvite = () => {
         if (fetchError) throw fetchError;
 
         if (!data) {
+          clearPendingInvite();
           setError('Invitation not found or has been cancelled');
-          setLoading(false);
-          return;
-        }
-
-        // Check if already accepted
-        if (data.accepted_at) {
-          setError('This invitation has already been accepted');
           setLoading(false);
           return;
         }
 
         // Check if expired
         if (new Date(data.expires_at) < new Date()) {
+          clearPendingInvite();
           setError('This invitation has expired');
+          setLoading(false);
+          return;
+        }
+
+        setPendingInvite(token, data.email);
+
+        // If the user already belongs to this organization, treat the invite as completed.
+        if (user?.id && user.email?.toLowerCase() === data.email.toLowerCase()) {
+          const { data: existingMember, error: memberLookupError } = await supabase
+            .from('organization_members')
+            .select('id')
+            .eq('organization_id', data.organization_id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (memberLookupError) throw memberLookupError;
+
+          if (existingMember) {
+            if (!data.accepted_at) {
+              await markInviteAccepted(data.id);
+            }
+
+            await completeInviteeProfileSetup(user.id);
+            clearPendingInvite();
+            setStoredOrganizationId(data.organization_id);
+            toast.success('You have already joined this workspace');
+            navigate(`/team?org=${data.organization_id}`, { replace: true });
+            return;
+          }
+        }
+
+        // Check if already accepted
+        if (data.accepted_at) {
+          clearPendingInvite();
+          setError('This invitation has already been accepted');
           setLoading(false);
           return;
         }
@@ -93,7 +148,7 @@ const AcceptInvite = () => {
     };
 
     fetchInvite();
-  }, [token]);
+  }, [token, user, navigate]);
 
   const handleAcceptInvite = async () => {
     if (!invite || !user) return;
@@ -117,21 +172,25 @@ const AcceptInvite = () => {
 
       if (memberError) {
         if (memberError.code === '23505') {
-          toast.error('You are already a member of this organization');
-          navigate('/team');
+          await markInviteAccepted(invite.id);
+          await completeInviteeProfileSetup(user.id);
+          clearPendingInvite();
+          setStoredOrganizationId(invite.organization_id);
+          toast.success('You have already joined this workspace');
+          navigate(`/team?org=${invite.organization_id}`);
           return;
         }
         throw memberError;
       }
 
       // Mark invite as accepted
-      await supabase
-        .from('team_invites')
-        .update({ accepted_at: new Date().toISOString() })
-        .eq('id', invite.id);
+      await markInviteAccepted(invite.id);
+      await completeInviteeProfileSetup(user.id);
 
+      clearPendingInvite();
+      setStoredOrganizationId(invite.organization_id);
       toast.success(`Welcome to ${invite.organization?.name || 'the team'}!`);
-      navigate('/dashboard');
+      navigate(`/team?org=${invite.organization_id}`);
     } catch (err) {
       console.error('Error accepting invite:', err);
       toast.error('Failed to accept invitation');

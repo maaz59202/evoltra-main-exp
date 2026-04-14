@@ -1,0 +1,384 @@
+I've already accepted the invite and joined the workspace. Why it's not reflecting that
+
+
+
+15 previous messages
+The issue was in the invite acceptance flow in AcceptInvite.tsx: when your membership already existed, the app redirected you to the workspace but never updated team_invites.accepted_at. That left the invite looking pending, so the UI didn’t fully reflect that you’d already joined.
+
+I fixed it so the page now:
+
+marks the invite as accepted when it detects you’re already a member
+treats “already a member” as a successful state instead of an error
+redirects straight to /team?org=... when your account already belongs to that workspace
+I also verified it with npx tsc --noEmit.
+
+If you refresh the Team page now, that invite should stop showing as pending and the workspace state should look correct.
+
+
+1 file changed
+Undo
+
+Review
+src/pages/AcceptInvite.tsx
+{code: "PGRST116", details: "The result contains 0 rows", hint: null,…}
+code
+: 
+"PGRST116"
+details
+: 
+"The result contains 0 rows"
+hint
+: 
+null
+message
+: 
+"Cannot coerce the result to a single JSON object"
+
+
+
+13 previous messages
+That Supabase error means a query used .single() but the database returned 0 rows. In your case, that’s a normal possibility during invite/signup/workspace transitions, so the app shouldn’t treat it as a hard failure.
+
+I changed the zero-row-sensitive queries to use maybeSingle() in:
+
+AuthContext.tsx
+Billing.tsx
+Leads.tsx
+That pairs with the earlier invite fix in AcceptInvite.tsx, so now:
+
+existing membership won’t leave the invite pending
+missing profile/membership rows won’t throw PGRST116
+the UI can gracefully continue when a row simply doesn’t exist yet
+I also re-ran npx tsc --noEmit and it passed.
+
+If you still see the message, send me the exact screen or console stack where it appears and I’ll trace the remaining .single() caller directly.
+
+
+3 files changed
++3
+-3
+Undo
+
+Review
+src/contexts/AuthContext.tsx
+src/pages/Billing.tsx
+src/pages/Leads.tsx
+gpt:
+
+I found the real reason it was not reflecting correctly.
+
+The invite acceptance flow was failing before the membership row could be created because your live database still has a legacy foreign key on organization_members.user_id pointing at a users table. This repo no longer provisions that table directly, so for some accounts, especially OAuth/invite edge cases, the membership insert was hitting:
+
+23503
+organization_members_user_id_fkey
+Key is not present in table "users"
+What I changed
+
+In AcceptInvite.tsx
+before inserting organization_members, the app now:
+ensures the profiles row exists
+attempts a best-effort upsert into legacy users for deployments that still have that older table
+then it proceeds with the membership insert
+In AuthContext.tsx
+on login/session restore, the app now self-heals account records by:
+ensuring the profiles row exists
+attempting the same legacy users compatibility upsert
+So this is now more robust in two places:
+
+when the user logs in
+when they accept the invite.
+
+Can't we revert back to the original and make sure when the an invitation is set it asks to create an account first then accept invitation
+Show more
+
+
+
+24 previous messages
+Yes. That’s the cleaner product behavior, and I’ve switched it back in that direction.
+
+I removed the client-side legacy users table compatibility logic from AcceptInvite.tsx and AuthContext.tsx. Instead, the invite flow now preserves the invite URL through auth:
+
+from the invite page, Log In and Sign Up now carry next=/invite/:token
+Login.tsx sends the user back to that invite after password login, 2FA, or OAuth
+Signup.tsx does the same after account creation, and even keeps the redirect for email verification
+So the flow is now:
+
+open invite
+create account or log in with the invited email
+return to the invite page
+explicitly click Accept Invitation
+npx tsc --noEmit passes.
+
+One important caveat: if your live database still truly has organization_members.user_id -> users.id, then the real durable fix is in the database, not the frontend. This UI flow is better, but it won’t solve a broken foreign key by itself.
+
+
+5 files changed
++51
+-169
+Undo
+
+Review
+src/contexts/AuthContext.tsx
+src/pages/AcceptInvite.tsx
+src/pages/Login.tsx
+src/pages/Login.tsx
+src/pages/Signup.tsx
+
+
+
+flow is fucked now after login it directly goes onboarding can we go back to the setup where it wasn't fucked. the problem was i deleted an already singed up user. then tried to accept the invitation from that email/
+
+
+
+10 previous messages
+I rolled back the part that was breaking the flow.
+
+What I restored:
+
+AcceptInvite.tsx now sends Log In and Sign Up back to plain /login and /signup
+Login.tsx goes back to its normal post-login behavior
+Signup.tsx also goes back to normal auth navigation
+What I kept:
+
+the safer maybeSingle() handling
+the invite fix that marks an invite accepted if you’re already a member
+profile self-healing in AuthContext.tsx so if you deleted a previously signed-up user and recreated that account, the app will recreate the profiles row automatically on login/session restore
+So we’re back to the older UX, but with better tolerance for the deleted-user case. npx tsc --noEmit passes.
+
+One thing to keep in mind: if you deleted the auth user and then recreated that same email, the old invite link may still be tied to a state that needs a fresh accept attempt after logging in again. If it still misbehaves, I can trace the exact DB-side row state next.
+
+
+4 files changed
++57
+-51
+Undo
+
+Review
+src/contexts/AuthContext.tsx
+src/pages/AcceptInvite.tsx
+src/pages/Login.tsx
+src/pages/Signup.tsx
+Okay that was better. But still after signin up vanilla or by google it redirects to onboarding then you have to nagivate by yourself to the email and click accept invitation then it accepts you to the specific team. Also we need a graceful and solid account deletion option in settings.
+
+
+
+30 previous messages
+I fixed both flows.
+
+Invite flow now keeps context without breaking auth:
+
+AcceptInvite.tsx stores a pending invite as soon as the link is validated
+Onboarding.tsx now sends a newly created user back to that invite after setup
+Dashboard.tsx does the same for already-onboarded users who land on the dashboard after auth
+pendingInvite.ts handles storing/clearing that state
+So the behavior should now be:
+
+open invite
+sign up or sign in
+complete onboarding if needed
+get sent back to the invite automatically
+accept and land in the right team
+I also added a proper account deletion path:
+
+Settings.tsx now has a danger-zone delete account flow with email confirmation
+delete-account edge function performs the real deletion server-side
+it blocks deletion if the user still owns any workspaces, and otherwise cleans up profile, memberships, notifications, avatar files, and then deletes the auth user
+supabase/config.toml includes the new function config
+npx tsc --noEmit passes.
+
+One important note: the new account deletion function is added in the repo, but it still needs to be deployed to Supabase before the Settings button will work live.
+
+
+7 files changed
++372
+-30
+Undo
+
+Review
+src/lib/pendingInvite.ts
+src/pages/AcceptInvite.tsx
+src/pages/Onboarding.tsx
+src/pages/Dashboard.tsx
+supabase/functions/delete-account/index.ts
+supabase/config.toml
+src/pages/Settings.tsx
+also when owner revokes a member's access it's not reflecting on the members account.
+
+
+
+8 previous messages
+I fixed that.
+
+The root issue was in useProjects.ts: the app was fetching from organizations directly, so a revoked member could still see workspaces even after their organization_members row was deleted.
+
+Now it:
+
+loads workspaces from the current user’s organization_members rows
+filters projects to only organizations the user still belongs to
+clears the active workspace if access is gone
+subscribes to membership changes so revoking access reflects on the member account as soon as that row changes
+npx tsc --noEmit passes.
+
+So after this change, when an owner removes a member, that member should lose the workspace from their account instead of still seeing stale access.
+
+
+1 file changed
+Undo
+
+Review
+src/hooks/useProjects.ts
+User attachment
+User attachment
+User attachment
+from the owner side even after accepting invitation and accessing worksspace the owner side is still showing invite pending and for some reason the member is also seeing in his invite section his own pending invite
+
+
+
+8 previous messages
+I fixed the Team page behavior in useTeamManagement.ts.
+
+What changed:
+
+pending invites are now filtered out if that invite email already belongs to an active member in the workspace
+non-managers no longer see the pending invite list at all
+the hook also clears stale role/invite state properly when membership context changes
+So now:
+
+the owner should stop seeing a member’s accepted invite still listed as pending
+the member should not see their own old invite in the Pending tab
+npx tsc --noEmit passes.
+
+If you want, I can also add a small auto-repair step that marks those stale invites as accepted_at in the database when the hook detects a matching member, so the DB and UI stay fully in sync instead of just hiding the bad rows.
+
+
+1 file changed
+Undo
+
+Review
+src/hooks/useTeamManagement.ts
+we'll clean the db fresh so no worries. also on invite accept flow. can we make it like when the flow starts from the email -> signin/signup -> onboarding -> dashboard. which doesn't make sense for a team member. cos he's a team Member/Admin not a Team Owner or Solo Owner. He's there to work as member or admin, he doesn't need the onboarding. only solo or team owners do.
+
+
+
+8 previous messages
+I changed the onboarding gate so invited member/admin users are no longer forced through owner-style onboarding.
+
+What it does now in ProtectedRoute.tsx:
+
+if there’s a matching pending invite for the signed-in email, protected pages redirect straight back to that invite instead of onboarding
+if the user already has a non-owner workspace role (member or admin), they can access the app without onboarding
+owners still go through onboarding as before
+So the invitee flow is now effectively:
+
+email invite
+sign in / sign up
+go straight to the invite
+accept
+enter the workspace
+And if they’re already a member/admin with onboarding_completed = false, they won’t keep getting bounced into onboarding anymore.
+
+npx tsc --noEmit passes.
+
+
+1 file changed
+Undo
+
+Review
+src/components/auth/ProtectedRoute.tsx
+after clicling accept invite and signing up with a new email the onboarding still popped up.
+
+
+
+4 previous messages
+I added a stronger fallback in Onboarding.tsx so invited users won’t stay on onboarding even if they somehow reach it.
+
+Now when onboarding mounts:
+
+it checks for a matching pending invite in local storage
+if the signed-in user matches that invite, it redirects them back to /invite/:token
+it does that even before they’ve accepted, so new invitees aren’t treated like owners
+So the route gate still tries to skip onboarding, and now onboarding itself also kicks invitees back out if they land there anyway.
+
+npx tsc --noEmit passes.
+
+If it still pops once visually before redirecting, I can make it even tighter by adding a dedicated “invite acceptance” auth return route instead of using the general dashboard/onboarding path.
+
+
+1 file changed
+Undo
+
+Review
+src/pages/Onboarding.tsx
+now after email, signup, accept, it still went to onboarding. 
+
+I think we need a more solid RBAC. I think we need to review the members and admins roles properly how they're being handled in supabase and also what operations are allowed to them. 
+
+Team Members: should just be able to view projects, tasks, funnels, leads and messages. And admins should have more adminitrative control like adding workspaces, projects, inviting clients, revoking teams and clients. and creating invoices. Team members shouldn't be allowed in invoices section.
+
+Also Payment recieving feature in Invoice mention payment receiving details. In invoice section Add payment recieving details, Acc Name, Acc Number, Bank Name, Payment link(Optional).
+
+
+
+
+69 previous messages
+I tightened this in three places.
+
+First, the invite flow: AcceptInvite.tsx now marks invited users as onboarding_completed = true when they accept or when the app detects they already belong to the workspace. That gives us a hard backend-backed bypass so invited member/admin users stop falling back into onboarding after signup.
+
+Second, I started the RBAC cleanup properly:
+
+productCopy.ts now has more explicit capabilities like manageClients, manageFunnels, viewBilling, and createInvoices
+useOrganizationPermissions.ts centralizes org-role permissions
+members now lose Billing in the sidebar, can’t create invoices, can’t invite/revoke clients, can’t create/edit funnels, and can’t create/manage projects from the UI
+admins/owners retain those management actions
+Billing is now blocked for members in Billing.tsx
+Third, I added invoice payment receiving details:
+
+new organization-level fields are included in the new migration
+Billing.tsx now lets admin/owner save:
+Account Name
+Account Number
+Bank Name
+Payment Link
+those details now appear in CreateInvoiceDialog.tsx and on the rendered invoice in InvoiceDetails.tsx
+I also added the real Supabase-side RBAC migration here:
+
+20260412160000_org_rbac_and_payment_details.sql
+That migration:
+
+adds org-role helper functions
+restricts project/client/invoice/funnel management to owner/admin
+keeps read access for members where appropriate
+adds the missing invite update policy so accept flow can update accepted_at
+adds the new organization payment detail columns
+npx tsc --noEmit passes.
+
+Important: the Supabase migration still needs to be applied for the backend RBAC and payment fields to take effect live. The frontend changes are ready, but the real permission enforcement depends on that migration.
+
+
+20 files changed
++1024
+-75
+Undo
+
+Review
+src/data/productCopy.ts
+src/hooks/useOrganizationPermissions.ts
+src/hooks/useProjects.ts
+src/pages/AcceptInvite.tsx
+src/components/layout/AppSidebar.tsx
+src/pages/Projects.tsx
+src/components/projects/ProjectCard.tsx
+src/components/projects/CreateProjectDialog.tsx
+src/pages/Billing.tsx
+src/components/billing/InvoicesTab.tsx
+src/pages/ProjectDetails.tsx
+src/pages/ProjectDetails.tsx
+src/pages/ProjectDetails.tsx
+src/pages/Funnels.tsx
+src/pages/FunnelBuilder.tsx
+src/pages/InvoiceDetails.tsx
+src/components/billing/CreateInvoiceDialog.tsx
+src/integrations/supabase/types.ts
+supabase/migrations/20260412160000_org_rbac_and_payment_details.sql
+supabase/migrations/20260412160000_org_rbac_and_payment_details.sql

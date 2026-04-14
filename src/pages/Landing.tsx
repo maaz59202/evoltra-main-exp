@@ -24,12 +24,12 @@ const features = [
   {
     icon: <BarChart3 className="w-6 h-6" />,
     title: 'Project Management',
-    description: 'Kanban boards, task tracking, and deadlines—all organized for maximum productivity.'
+    description: 'Kanban boards, task tracking, and deadlines, all organized for maximum productivity.'
   },
   {
     icon: <Users className="w-6 h-6" />,
     title: 'Client Portal',
-    description: 'Invite clients to view project progress, send messages, and collaborate seamlessly.'
+    description: 'Invite clients to review progress, send messages, and stay in the loop without extra tools.'
   },
   {
     icon: <MessageSquare className="w-6 h-6" />,
@@ -39,7 +39,7 @@ const features = [
   {
     icon: <CreditCard className="w-6 h-6" />,
     title: 'Billing & Invoices',
-    description: 'Generate invoices, track payments, and integrate with Stripe for easy transactions.'
+    description: 'Create invoices, track payment status, and keep billing tied to the right project and client.'
   },
   {
     icon: <Zap className="w-6 h-6" />,
@@ -84,7 +84,7 @@ const Landing = () => {
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-6 animate-fade-in">
               <Zap className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Your all-in-one freelance toolkit</span>
+              <span className="text-sm font-medium">Client work, projects, and billing in one workspace</span>
             </div>
 
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 animate-fade-in" style={{ animationDelay: '0.1s' }}>
@@ -93,10 +93,9 @@ const Landing = () => {
               Grow your business.
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              Evoltra combines project management, client portals, and a visual funnel builder 
-              into one powerful platform built for modern freelancers and agencies.
-            </p>
+              <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              Evoltra keeps projects, client communication, funnels, and billing in one place so freelancers and small teams can manage work without stitching together separate apps.
+              </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
               <Button size="lg" className="gradient-primary text-white px-8 h-12 text-lg" asChild>
@@ -122,7 +121,7 @@ const Landing = () => {
                   </div>
                 ))}
               </div>
-              <span className="ml-2">Trusted by 500+ freelancers</span>
+              <span className="ml-2">Used by freelancers and small teams</span>
             </div>
           </div>
         </div>
@@ -132,13 +131,12 @@ const Landing = () => {
       <section className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Everything you need to <span className="gradient-text">succeed</span>
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              From project management to client communication, Evoltra has all the tools 
-              to streamline your freelance workflow.
-            </p>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+               Core tools for <span className="gradient-text">running client work</span>
+              </h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+               From task tracking to invoices and client access, Evoltra keeps the day-to-day parts of running projects in one system.
+              </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -228,11 +226,10 @@ const Landing = () => {
             <div className="absolute inset-0 gradient-primary opacity-5" />
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                Ready to streamline your workflow?
+                Ready to get your client work organized?
               </h2>
               <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-                Join thousands of freelancers and agencies using Evoltra to manage 
-                their projects and grow their business.
+                 Set up your workspace, invite a client, and start tracking work without juggling multiple tools.
               </p>
               <Button size="lg" className="gradient-primary text-white px-8 h-12 text-lg" asChild>
                 <Link to="/signup">

@@ -42,6 +42,7 @@ import ClientLogin from "./pages/client/ClientLogin";
 import ClientAcceptInvite from "./pages/client/ClientAcceptInvite";
 import ClientPortal from "./pages/client/ClientPortal";
 import ClientProjectView from "./pages/client/ClientProjectView";
+import ClientInvoiceView from "./pages/client/ClientInvoiceView";
 
 const queryClient = new QueryClient();
 
@@ -201,6 +202,7 @@ const App = () => (
               <Route path="/client/accept/:token" element={<ClientAcceptInvite />} />
               <Route path="/client/portal" element={<ClientPortal />} />
               <Route path="/client/project/:projectId" element={<ClientProjectView />} />
+              <Route path="/client/invoice/:invoiceId" element={<ClientInvoiceView />} />
               
               {/* Catch-all */}
               <Route path="*" element={<NotFound />} />

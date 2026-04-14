@@ -23,7 +23,7 @@ export const PLAN_DEFINITIONS: Record<PlanKey, PlanDefinition> = {
     priceLabel: 'Free',
     monthlyPrice: 0,
     period: 'forever',
-    description: 'Perfect for freelancers starting out',
+    description: 'A simple starting plan for solo freelancers',
     landingFeatures: [
       'Unlimited projects',
       '1 funnel',
@@ -48,7 +48,7 @@ export const PLAN_DEFINITIONS: Record<PlanKey, PlanDefinition> = {
     priceLabel: '$29',
     monthlyPrice: 29,
     period: '/month',
-    description: 'For growing agencies and teams',
+    description: 'For agencies and teams managing work together',
     landingFeatures: [
       'Unlimited projects',
       'Unlimited funnels',
@@ -76,15 +76,64 @@ export const TEAM_ROLES = [
     role: 'owner',
     title: 'Owner',
     description: 'Full control, including billing and team management.',
+    permissions: {
+      viewProjects: true,
+      manageProjects: true,
+      viewFunnels: true,
+      manageFunnels: true,
+      viewLeads: true,
+      manageClients: true,
+      manageMembers: true,
+      manageSettings: true,
+      viewBilling: true,
+      manageBilling: true,
+      createInvoices: true,
+      collaborate: true,
+    },
   },
   {
     role: 'admin',
     title: 'Admin',
-    description: 'Can manage projects, members, and workspace settings.',
+    description: 'Can manage projects, clients, invoices, and team access.',
+    permissions: {
+      viewProjects: true,
+      manageProjects: true,
+      viewFunnels: true,
+      manageFunnels: true,
+      viewLeads: true,
+      manageClients: true,
+      manageMembers: true,
+      manageSettings: true,
+      viewBilling: true,
+      manageBilling: true,
+      createInvoices: true,
+      collaborate: true,
+    },
   },
   {
     role: 'member',
     title: 'Member',
-    description: 'Can collaborate on projects and tasks.',
+    description: 'Can view workspaces, projects, funnels, leads, tasks, and messages.',
+    permissions: {
+      viewProjects: true,
+      manageProjects: false,
+      viewFunnels: true,
+      manageFunnels: false,
+      viewLeads: true,
+      manageClients: false,
+      manageMembers: false,
+      manageSettings: false,
+      viewBilling: false,
+      manageBilling: false,
+      createInvoices: false,
+      collaborate: true,
+    },
   },
 ] as const;
+
+export const ROLE_PERMISSIONS = Object.fromEntries(
+  TEAM_ROLES.map((role) => [role.role, role.permissions])
+) as Record<
+  (typeof TEAM_ROLES)[number]['role'],
+  (typeof TEAM_ROLES)[number]['permissions']
+>;

@@ -39,7 +39,7 @@ const NotificationDropdown = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80">
+      <DropdownMenuContent align="end" className="w-[26rem] max-w-[calc(100vw-1rem)]">
         <div className="flex items-center justify-between px-4 py-2">
           <span className="font-semibold">Notifications</span>
           {unreadCount > 0 && (
@@ -65,7 +65,7 @@ const NotificationDropdown = () => {
             notifications.map((notification) => (
               <DropdownMenuItem
                 key={notification.id}
-                className={`flex items-start gap-3 p-3 cursor-pointer ${
+                className={`flex items-start gap-3 p-3 cursor-pointer whitespace-normal ${
                   !notification.read ? 'bg-accent/50' : ''
                 }`}
                 onClick={() => handleNotificationClick(notification)}
@@ -80,9 +80,9 @@ const NotificationDropdown = () => {
                   <MessageSquare className="h-4 w-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{notification.title}</p>
+                  <p className="text-sm font-medium leading-5 break-words">{notification.title}</p>
                   {notification.message && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground break-words whitespace-normal">
                       {notification.message}
                     </p>
                   )}

@@ -4,12 +4,12 @@ A modern agency management platform built with React, Vite, Tailwind CSS, and Su
 
 ## Features
 
-- **Projects & Kanban** — Manage client projects with drag-and-drop task boards
-- **Funnel Builder** — Drag-and-drop landing page builder with pre-built templates
-- **Client Portal** — Invite clients to view project progress and communicate
-- **Billing & Invoicing** — Stripe-powered subscriptions with embedded checkout
-- **Team Management** — Invite members, assign roles, collaborate in real-time
-- **Lead Capture** — Collect and manage leads from published funnels
+- **Projects & Kanban**: Manage client projects with drag-and-drop task boards
+- **Funnel Builder**: Drag-and-drop landing page builder with pre-built templates
+- **Client Portal**: Invite clients to view project progress and communicate
+- **Billing & Invoicing**: Stripe-powered subscriptions with embedded checkout
+- **Team Management**: Invite members, assign roles, collaborate in real-time
+- **Lead Capture**: Collect and manage leads from published funnels
 
 ---
 
@@ -125,7 +125,7 @@ supabase secrets list
 
 ## Edge Function Secrets
 
-The following secrets are configured **server-side on Supabase** and are **NOT** included in the GitHub repository. They are already set on the existing Supabase project — no action needed unless you switch to a new project.
+The following secrets are configured **server-side on Supabase** and are **NOT** included in the GitHub repository. They are already set on the existing Supabase project. No action is needed unless you switch to a new project.
 
 | Secret                 | Purpose                              | Where to Get It                                    |
 |------------------------|--------------------------------------|----------------------------------------------------|
@@ -194,7 +194,7 @@ supabase secrets set GMAIL_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
 
 
 
-**Use GitHub Codespaces** — Click Code → Codespaces → New codespace on the repo page.
+**Use GitHub Codespaces**: Click Code -> Codespaces -> New codespace on the repo page.
 
 ---
 
@@ -205,4 +205,4 @@ supabase secrets set GMAIL_APP_PASSWORD=xxxx_xxxx_xxxx_xxxx
 
 ## License
 
-Private — All rights reserved.
+Private. All rights reserved.

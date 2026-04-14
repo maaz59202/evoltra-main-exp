@@ -10,16 +10,20 @@ import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import InvoiceStatusBadge from './InvoiceStatusBadge';
 import CreateInvoiceDialog from './CreateInvoiceDialog';
 import { useToast } from '@/hooks/use-toast';
+import { formatCurrencyAmount } from '@/lib/currency';
 
 interface InvoicesTabProps {
   organizationId: string;
+  canManageBilling: boolean;
 }
 
-const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
+const InvoicesTab = ({ organizationId, canManageBilling }: InvoicesTabProps) => {
   const { invoices, isLoading, stats, createInvoice, updateInvoiceStatus, sendInvoiceReminder, deleteInvoice } = useInvoices(organizationId);
   const { toast } = useToast();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const invoiceCurrencies = Array.from(new Set((invoices || []).map((invoice) => invoice.currency)));
+  const statsCurrency = invoiceCurrencies.length === 1 ? invoiceCurrencies[0] : null;
 
   const filteredInvoices = invoices?.filter((invoice: Invoice) => 
     statusFilter === 'all' || invoice.status === statusFilter
@@ -62,13 +66,13 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
     if (!invoices || invoices.length === 0) return;
 
     const headers = ['Invoice #', 'Client', 'Amount', 'Status', 'Due Date', 'Created'];
-    const rows = invoices.map((inv: Invoice) => [
-      inv.invoice_number,
-      inv.client?.name || 'N/A',
-      `$${Number(inv.total).toFixed(2)}`,
-      inv.status,
-      inv.due_date ? format(new Date(inv.due_date), 'MMM dd, yyyy') : 'N/A',
-      format(new Date(inv.created_at), 'MMM dd, yyyy'),
+      const rows = invoices.map((inv: Invoice) => [
+        inv.invoice_number,
+        inv.client?.name || 'N/A',
+        formatCurrencyAmount(Number(inv.total), inv.currency),
+        inv.status,
+        inv.due_date ? format(new Date(inv.due_date), 'MMM dd, yyyy') : 'N/A',
+        format(new Date(inv.created_at), 'MMM dd, yyyy'),
     ]);
 
     const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -97,7 +101,9 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalOutstanding.toFixed(2)}</div>
+            <div className="text-2xl font-bold">
+              {statsCurrency ? formatCurrencyAmount(stats.totalOutstanding, statsCurrency) : `${stats.totalOutstanding.toFixed(2)} mixed`}
+            </div>
           </CardContent>
         </Card>
         <Card>
@@ -119,7 +125,9 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
             <CheckCircle className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">${stats.paidThisMonth.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-primary">
+              {statsCurrency ? formatCurrencyAmount(stats.paidThisMonth, statsCurrency) : `${stats.paidThisMonth.toFixed(2)} mixed`}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -145,7 +153,7 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
             Export CSV
           </Button>
         </div>
-        <Button onClick={() => setCreateDialogOpen(true)}>
+        <Button onClick={() => setCreateDialogOpen(true)} disabled={!canManageBilling}>
           <Plus className="mr-2 h-4 w-4" />
           Create Invoice
         </Button>
@@ -161,7 +169,7 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
           ) : filteredInvoices?.length === 0 ? (
             <div className="flex h-32 flex-col items-center justify-center text-muted-foreground">
               <p>No invoices found</p>
-              <Button variant="link" onClick={() => setCreateDialogOpen(true)}>
+              <Button variant="link" onClick={() => setCreateDialogOpen(true)} disabled={!canManageBilling}>
                 Create your first invoice
               </Button>
             </div>
@@ -182,7 +190,7 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
                   <TableRow key={invoice.id}>
                     <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
                     <TableCell>{invoice.client?.name || 'N/A'}</TableCell>
-                    <TableCell>${Number(invoice.total).toFixed(2)}</TableCell>
+                    <TableCell>{formatCurrencyAmount(Number(invoice.total), invoice.currency)}</TableCell>
                     <TableCell>
                       <InvoiceStatusBadge status={invoice.status} />
                     </TableCell>
@@ -203,7 +211,7 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
                             <ExternalLink className="mr-2 h-4 w-4" />
                             View Invoice
                           </DropdownMenuItem>
-                          {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                          {canManageBilling && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                             <>
                               <DropdownMenuItem onClick={() => void handleSendInvoice(invoice.id, invoice.status)}>
                                 <Send className="mr-2 h-4 w-4" />
@@ -215,13 +223,15 @@ const InvoicesTab = ({ organizationId }: InvoicesTabProps) => {
                               </DropdownMenuItem>
                             </>
                           )}
-                          <DropdownMenuItem 
-                            onClick={() => deleteInvoice.mutate(invoice.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
+                          {canManageBilling && (
+                            <DropdownMenuItem 
+                              onClick={() => deleteInvoice.mutate(invoice.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

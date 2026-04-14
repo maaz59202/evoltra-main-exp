@@ -177,6 +177,36 @@ serve(async (req) => {
         console.log("New client created:", clientUser.id);
       }
 
+      if (project.organization_id) {
+        const normalizedEmail = email.toLowerCase();
+        const { data: orgBillingClients, error: billingClientLookupError } = await supabase
+          .from("clients")
+          .select("id")
+          .eq("organization_id", project.organization_id)
+          .eq("email", normalizedEmail)
+          .limit(1);
+
+        if (billingClientLookupError) {
+          console.error("Error checking billing client:", billingClientLookupError);
+          throw billingClientLookupError;
+        }
+
+        if (!orgBillingClients || orgBillingClients.length === 0) {
+          const { error: billingClientCreateError } = await supabase
+            .from("clients")
+            .insert({
+              organization_id: project.organization_id,
+              name: fullName || clientUser.full_name || normalizedEmail.split("@")[0],
+              email: normalizedEmail,
+            });
+
+          if (billingClientCreateError) {
+            console.error("Error creating billing client:", billingClientCreateError);
+            throw billingClientCreateError;
+          }
+        }
+      }
+
       // Create project_client link with invite token
       const { data: projectClient, error: linkError } = await supabase
         .from("project_clients")

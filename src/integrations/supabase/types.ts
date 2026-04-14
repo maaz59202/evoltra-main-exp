@@ -183,18 +183,33 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          payment_receiving_details: Json | null
+          payment_account_name: string | null
+          payment_account_number: string | null
+          payment_bank_name: string | null
+          payment_link: string | null
           slug: string
         }
         Insert: {
           created_at?: string | null
           id?: string
           name: string
+          payment_receiving_details?: Json | null
+          payment_account_name?: string | null
+          payment_account_number?: string | null
+          payment_bank_name?: string | null
+          payment_link?: string | null
           slug: string
         }
         Update: {
           created_at?: string | null
           id?: string
           name?: string
+          payment_receiving_details?: Json | null
+          payment_account_name?: string | null
+          payment_account_number?: string | null
+          payment_bank_name?: string | null
+          payment_link?: string | null
           slug?: string
         }
         Relationships: []
@@ -209,6 +224,7 @@ export type Database = {
           goals: string[] | null
           id: string
           mode: string | null
+          notification_preferences: Json | null
           onboarding_completed: boolean | null
           updated_at: string | null
           user_id: string
@@ -222,6 +238,7 @@ export type Database = {
           goals?: string[] | null
           id?: string
           mode?: string | null
+          notification_preferences?: Json | null
           onboarding_completed?: boolean | null
           updated_at?: string | null
           user_id: string
@@ -235,6 +252,7 @@ export type Database = {
           goals?: string[] | null
           id?: string
           mode?: string | null
+          notification_preferences?: Json | null
           onboarding_completed?: boolean | null
           updated_at?: string | null
           user_id?: string
@@ -291,30 +309,43 @@ export type Database = {
       }
       project_messages: {
         Row: {
+          client_sender_id: string | null
           created_at: string | null
           id: string
           message: string
           project_id: string | null
+          sender_name: string | null
           sender_id: string | null
           sender_type: string
         }
         Insert: {
+          client_sender_id?: string | null
           created_at?: string | null
           id?: string
           message: string
           project_id?: string | null
+          sender_name?: string | null
           sender_id?: string | null
           sender_type: string
         }
         Update: {
+          client_sender_id?: string | null
           created_at?: string | null
           id?: string
           message?: string
           project_id?: string | null
+          sender_name?: string | null
           sender_id?: string | null
           sender_type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_messages_client_sender_id_fkey"
+            columns: ["client_sender_id"]
+            isOneToOne: false
+            referencedRelation: "client_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_messages_project_id_fkey"
             columns: ["project_id"]

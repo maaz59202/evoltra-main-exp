@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -37,6 +37,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
 import {
   ChevronRight,
+  Building2,
   FolderOpen,
   LayoutGrid,
   Loader2,
@@ -56,7 +57,13 @@ const DEFAULT_COUNT = DEFAULT_COLUMNS.length;
 const normalizeLaneName = (value: string) => value.trim().toLowerCase().replace(/\s+/g, ' ');
 
 const Kanban = () => {
-  const { projects, loading: projectsLoading } = useProjects();
+  const {
+    projects,
+    organizations,
+    selectedOrgId,
+    setSelectedOrgId,
+    loading: projectsLoading,
+  } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [newColumnName, setNewColumnName] = useState('');
@@ -64,6 +71,12 @@ const Kanban = () => {
 
   const selectedProject = projects.find((project) => project.id === selectedProjectId);
   const { members } = useOrganizationMembers(selectedProject?.organization_id || null);
+
+  useEffect(() => {
+    if (selectedProjectId && !projects.some((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId(null);
+    }
+  }, [projects, selectedProjectId]);
 
   const {
     columns,
@@ -269,7 +282,25 @@ const Kanban = () => {
           </div>
 
           <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+              <Select
+                value={selectedOrgId || 'all'}
+                onValueChange={(value) => setSelectedOrgId(value === 'all' ? null : value)}
+              >
+                <SelectTrigger className="h-9 w-full min-w-[220px] rounded-lg border-border/60 bg-background/75 md:w-[240px]">
+                  <Building2 className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="All organizations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All organizations</SelectItem>
+                  {organizations.map((organization) => (
+                    <SelectItem key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <Select
                 value={selectedProjectId || ''}
                 onValueChange={(value) => setSelectedProjectId(value || null)}

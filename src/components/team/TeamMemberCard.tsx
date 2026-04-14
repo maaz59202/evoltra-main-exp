@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -37,17 +36,17 @@ const roleTitles = Object.fromEntries(TEAM_ROLES.map((role) => [role.role, role.
 const roleConfig: Record<MemberRole, { label: string; icon: React.ReactNode; color: string }> = {
   owner: { 
     label: roleTitles.owner, 
-    icon: <Crown className="w-3 h-3" />, 
+    icon: <Crown className="w-4 h-4" />, 
     color: 'bg-warning/20 text-warning border-warning/30' 
   },
   admin: { 
     label: roleTitles.admin, 
-    icon: <ShieldCheck className="w-3 h-3" />, 
+    icon: <ShieldCheck className="w-4 h-4" />, 
     color: 'bg-primary/20 text-primary border-primary/30' 
   },
   member: { 
     label: roleTitles.member, 
-    icon: <Shield className="w-3 h-3" />, 
+    icon: <Shield className="w-4 h-4" />, 
     color: 'bg-muted text-muted-foreground' 
   },
 };
@@ -103,32 +102,37 @@ const TeamMemberCard = ({
 
   return (
     <>
-      <Card className="p-4 hover:shadow-md transition-shadow">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10">
+      <div className="rounded-2xl border border-border/60 bg-background/35 px-4 py-4 transition-colors hover:bg-background/50">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="h-11 w-11 shrink-0 border border-border/60 bg-background ring-1 ring-white/5">
               <AvatarImage src={member.profile?.avatar_url || undefined} />
-              <AvatarFallback>
+              <AvatarFallback className="bg-background/80 text-sm font-medium">
                 {getInitials(member.profile?.full_name, member.profile?.email)}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="font-medium">
+            <div className="min-w-0 space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="truncate text-base font-semibold">
                   {member.profile?.full_name || member.profile?.email || 'Unknown User'}
                 </p>
                 {isCurrentUser && (
-                  <Badge variant="outline" className="text-xs">You</Badge>
+                  <Badge variant="outline" className="rounded-full border-border/60 bg-background/50 text-[11px]">
+                    You
+                  </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="truncate text-sm text-muted-foreground">
                 {member.profile?.email || 'No email'}
+              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/80">
+                {isOwner ? 'Workspace owner' : roleInfo.label}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={`flex items-center gap-1 ${roleInfo.color}`}>
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
+            <Badge variant="outline" className={`h-9 rounded-full px-3 text-xs font-medium gap-2 ${roleInfo.color}`}>
               {roleInfo.icon}
               {roleInfo.label}
             </Badge>
@@ -136,7 +140,7 @@ const TeamMemberCard = ({
             {canModify && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" disabled={isLoading}>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={isLoading}>
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -168,7 +172,7 @@ const TeamMemberCard = ({
             )}
           </div>
         </div>
-      </Card>
+      </div>
 
       <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>
         <AlertDialogContent>

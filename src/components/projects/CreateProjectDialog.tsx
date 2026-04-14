@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -39,6 +39,14 @@ const CreateProjectDialog = ({
   const [orgId, setOrgId] = useState(selectedOrgId || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const preferredOrgId =
+      selectedOrgId && organizations.some((organization) => organization.id === selectedOrgId)
+        ? selectedOrgId
+        : organizations[0]?.id || '';
+    setOrgId(preferredOrgId);
+  }, [organizations, selectedOrgId, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
