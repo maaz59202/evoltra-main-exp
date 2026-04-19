@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, CalendarDays, Plus, Trash2 } from 'lucide-react';
+import { AlertCircle, CalendarDays, Plus, Trash2 } from '@/components/ui/icons';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,16 @@ interface CreateInvoiceDialogProps {
   organizationId: string;
   onSubmit: (data: CreateInvoiceData) => void | Promise<void>;
   isLoading?: boolean;
+  mode?: 'create' | 'edit';
+  initialData?: {
+    client_id?: string | null;
+    project_id?: string | null;
+    due_date?: string | null;
+    currency?: SupportedCurrencyCode;
+    tax_rate?: number;
+    notes?: string | null;
+    items?: InvoiceItem[];
+  } | null;
 }
 
 const CreateInvoiceDialog = ({
@@ -39,6 +49,8 @@ const CreateInvoiceDialog = ({
   organizationId,
   onSubmit,
   isLoading,
+  mode = 'create',
+  initialData = null,
 }: CreateInvoiceDialogProps) => {
   const { user, profile } = useAuth();
   const { clients } = useClients(organizationId);
@@ -58,6 +70,8 @@ const CreateInvoiceDialog = ({
   const [items, setItems] = useState<InvoiceItem[]>([
     { description: '', quantity: 1, unit_price: 0, amount: 0 },
   ]);
+
+  const isEditMode = mode === 'edit';
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,6 +108,45 @@ const CreateInvoiceDialog = ({
       void fetchData();
     }
   }, [clients, organizationId, open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (isEditMode && initialData) {
+      setProjectId(initialData.project_id || '');
+      setClientId(initialData.client_id || '');
+      setDueDate(initialData.due_date || '');
+      setCurrency(initialData.currency || DEFAULT_CURRENCY);
+      setTaxRate(String(initialData.tax_rate ?? 0));
+      setNotes(initialData.notes || '');
+
+      const seededItems = (initialData.items || [])
+        .filter((item) => item.description)
+        .map((item) => {
+          const quantity = Number(item.quantity) || 0;
+          const unitPrice = Number(item.unit_price) || 0;
+          return {
+            description: item.description,
+            quantity,
+            unit_price: unitPrice,
+            amount: quantity * unitPrice,
+          };
+        });
+
+      setItems(seededItems.length > 0 ? seededItems : [{ description: '', quantity: 1, unit_price: 0, amount: 0 }]);
+      return;
+    }
+
+    if (!isEditMode) {
+      setClientId('');
+      setProjectId('');
+      setDueDate('');
+      setCurrency(DEFAULT_CURRENCY);
+      setTaxRate('0');
+      setNotes('');
+      setItems([{ description: '', quantity: 1, unit_price: 0, amount: 0 }]);
+    }
+  }, [initialData, isEditMode, open]);
 
   useEffect(() => {
     if (!projectId) {
@@ -293,9 +346,11 @@ const CreateInvoiceDialog = ({
       <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto border-border/70 bg-background p-0 text-foreground shadow-2xl">
         <DialogHeader>
           <div className="border-b border-border/70 bg-card/50 px-8 py-5">
-            <DialogTitle className="text-[2rem] font-semibold tracking-tight text-foreground">Create Invoice</DialogTitle>
+            <DialogTitle className="text-[2rem] font-semibold tracking-tight text-foreground">
+              {isEditMode ? 'Edit Draft Invoice' : 'Create Invoice'}
+            </DialogTitle>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              {organizationName || 'Evoltra'} draft
+              {organizationName || 'Evoltra'} {isEditMode ? 'draft update' : 'draft'}
             </p>
           </div>
         </DialogHeader>
@@ -627,9 +682,9 @@ const CreateInvoiceDialog = ({
               items.every((item) => !item.description || item.amount === 0)
             }
           >
-            {isLoading ? 'Creating...' : 'Create Invoice'}
-          </Button>
-        </DialogFooter>
+              {isLoading ? (isEditMode ? 'Updating...' : 'Creating...') : isEditMode ? 'Update Draft' : 'Create Invoice'}
+            </Button>
+          </DialogFooter>
       </DialogContent>
     </Dialog>
   );

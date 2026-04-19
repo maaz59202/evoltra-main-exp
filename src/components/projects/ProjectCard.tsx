@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreVertical, Pencil, Trash2, FolderOpen, Check, X, UserPlus } from 'lucide-react';
+import { MoreVertical, Pencil, Trash2, FolderOpen, Check, X, UserPlus } from '@/components/ui/icons';
 import { Project } from '@/hooks/useProjects';
 import { format } from 'date-fns';
 import InviteClientDialog from './InviteClientDialog';
@@ -107,12 +107,12 @@ const ProjectCard = ({ project, onUpdate, onDelete, canManage, canManageClients 
   return (
     <>
       <Card 
-        className="glass-card hover:shadow-lg transition-all duration-300 group cursor-pointer"
+        className="group cursor-pointer rounded-[24px] border-border/60 bg-card/72 shadow-[0_14px_40px_rgba(2,6,23,0.08)] transition-all duration-200 hover:border-border hover:shadow-[0_18px_48px_rgba(2,6,23,0.12)]"
         onClick={handleCardClick}
       >
-        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center text-white flex-shrink-0">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl border border-border/60 bg-background/60 text-muted-foreground">
               <FolderOpen className="w-5 h-5" />
             </div>
             {isEditing ? (
@@ -153,7 +153,7 @@ const ProjectCard = ({ project, onUpdate, onDelete, canManage, canManageClients 
           {!isEditing && canManage && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -186,9 +186,9 @@ const ProjectCard = ({ project, onUpdate, onDelete, canManage, canManageClients 
           )}
         </CardHeader>
         
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
-            <Badge variant="outline" className={statusColors[project.status || 'active']}>
+            <Badge variant="outline" className={`rounded-full ${statusColors[project.status || 'active']}`}>
               {project.status || 'active'}
             </Badge>
             <span className="text-xs text-muted-foreground">
@@ -199,7 +199,7 @@ const ProjectCard = ({ project, onUpdate, onDelete, canManage, canManageClients 
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="h-10 w-full rounded-xl border-border/60 bg-background/40"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowInviteDialog(true);

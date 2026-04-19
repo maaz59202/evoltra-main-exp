@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import {
   Dialog,
@@ -17,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Mail, UserPlus } from 'lucide-react';
+import {  Mail, UserPlus } from '@/components/ui/icons';
 import { MemberRole } from '@/hooks/useTeamManagement';
 import { TEAM_ROLES } from '@/data/productCopy';
 
@@ -102,7 +103,7 @@ const InviteMemberDialog = ({ open, onOpenChange, onInvite }: InviteMemberDialog
                   <SelectItem key={r.role} value={r.role}>
                     <div className="flex flex-col items-start">
                       <span>{r.title}</span>
-                      <span className="text-xs text-muted-foreground">{r.description}</span>
+                      <span className="text-xs text-muted-foreground group-focus:text-accent-foreground/70">{r.description}</span>
                     </div>
                   </SelectItem>
                 ))}
@@ -121,7 +122,7 @@ const InviteMemberDialog = ({ open, onOpenChange, onInvite }: InviteMemberDialog
             <Button type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Spinner className="w-4 h-4 mr-2" />
                   Sending...
                 </>
               ) : (

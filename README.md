@@ -1,4 +1,4 @@
-# Evoltra Suite
+# Evoltra
 
 A modern agency management platform built with React, Vite, Tailwind CSS, and Supabase.
 
@@ -36,8 +36,8 @@ A modern agency management platform built with React, Vite, Tailwind CSS, and Su
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/evoltra-suite.git
-cd evoltra-suite
+git clone https://github.com/YOUR_USERNAME/evoltra.git
+cd evoltra
 ```
 
 ### 2. Install Dependencies

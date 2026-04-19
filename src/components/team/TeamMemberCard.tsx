@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Shield, ShieldCheck, Crown, UserMinus } from 'lucide-react';
+import { MoreHorizontal, Shield, ShieldCheck, Crown, UserMinus } from '@/components/ui/icons';
 import { TeamMember, MemberRole } from '@/hooks/useTeamManagement';
 import { TEAM_ROLES } from '@/data/productCopy';
 
@@ -102,22 +102,22 @@ const TeamMemberCard = ({
 
   return (
     <>
-      <div className="rounded-2xl border border-border/60 bg-background/35 px-4 py-4 transition-colors hover:bg-background/50">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-xl border border-border/50 bg-background/20 px-4 py-3 transition-colors hover:bg-background/35">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar className="h-11 w-11 shrink-0 border border-border/60 bg-background ring-1 ring-white/5">
+            <Avatar className="h-10 w-10 shrink-0 border border-border/50 bg-background">
               <AvatarImage src={member.profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-background/80 text-sm font-medium">
+              <AvatarFallback className="bg-background/80 text-xs font-medium">
                 {getInitials(member.profile?.full_name, member.profile?.email)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 space-y-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="truncate text-base font-semibold">
+                <p className="truncate text-[15px] font-medium">
                   {member.profile?.full_name || member.profile?.email || 'Unknown User'}
                 </p>
                 {isCurrentUser && (
-                  <Badge variant="outline" className="rounded-full border-border/60 bg-background/50 text-[11px]">
+                  <Badge variant="outline" className="rounded-full border-border/50 bg-background/40 text-[11px]">
                     You
                   </Badge>
                 )}
@@ -125,14 +125,14 @@ const TeamMemberCard = ({
               <p className="truncate text-sm text-muted-foreground">
                 {member.profile?.email || 'No email'}
               </p>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/80">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/80">
                 {isOwner ? 'Workspace owner' : roleInfo.label}
               </p>
             </div>
           </div>
 
           <div className="flex items-center justify-between gap-3 sm:justify-end">
-            <Badge variant="outline" className={`h-9 rounded-full px-3 text-xs font-medium gap-2 ${roleInfo.color}`}>
+            <Badge variant="outline" className={`h-8 rounded-full px-3 text-xs font-medium gap-2 ${roleInfo.color}`}>
               {roleInfo.icon}
               {roleInfo.label}
             </Badge>
@@ -140,7 +140,7 @@ const TeamMemberCard = ({
             {canModify && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={isLoading}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={isLoading}>
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>

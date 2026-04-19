@@ -50,7 +50,19 @@ export const useFunnels = () => {
 
   // Create a new funnel
   const createFunnelMutation = useMutation({
-    mutationFn: async ({ name, organizationId, widgets = [] }: { name: string; organizationId: string; widgets?: Widget[] }) => {
+    mutationFn: async ({
+      name,
+      organizationId,
+      widgets = [],
+      publishedUrl,
+      status = 'draft',
+    }: {
+      name: string;
+      organizationId: string;
+      widgets?: Widget[];
+      publishedUrl?: string;
+      status?: 'draft' | 'published';
+    }) => {
       const funnelId = crypto.randomUUID();
       
       const { data, error } = await supabase
@@ -59,8 +71,9 @@ export const useFunnels = () => {
           id: funnelId,
           name,
           organization_id: organizationId,
-          status: 'draft',
+          status,
           widgets,
+          published_url: publishedUrl ?? null,
         })
         .select()
         .single();

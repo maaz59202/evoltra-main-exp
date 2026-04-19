@@ -16,7 +16,7 @@ import {
   Users,
   MessageSquare,
   Zap
-} from 'lucide-react';
+} from '@/components/ui/icons';
 import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +26,7 @@ const Dashboard = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { checkSubscription, waitForSubscriptionUpdate, isTeam } = useSubscription();
+  const { checkSubscription, isTeam } = useSubscription();
   const { stats, activity, loading: dashboardLoading } = useDashboardData();
 
   // Handle checkout callback from Stripe
@@ -35,15 +35,11 @@ const Dashboard = () => {
     if (checkoutStatus === 'success') {
       searchParams.delete('checkout');
       setSearchParams(searchParams, { replace: true });
-      // Poll for subscription update (Stripe may take a moment)
       toast.loading('Verifying your subscription...', { id: 'sub-sync' });
-      waitForSubscriptionUpdate().then((success) => {
-        if (success) {
-          toast.success('Welcome to Team plan! Your subscription is now active.', { id: 'sub-sync' });
-        } else {
-          checkSubscription();
-          toast.info('Payment received! Your plan may take a moment to update.', { id: 'sub-sync' });
-        }
+      checkSubscription().finally(() => {
+        toast.info('Payment received. Refresh subscription status manually if it does not update right away.', {
+          id: 'sub-sync',
+        });
       });
     } else if (checkoutStatus === 'cancelled') {
       toast.info('Checkout was cancelled.');

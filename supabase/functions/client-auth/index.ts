@@ -35,6 +35,11 @@ interface LoginRequest {
   password: string;
 }
 
+interface RequestPasswordResetRequest {
+  action: "request-password-reset";
+  email: string;
+}
+
 interface ValidateTokenRequest {
   action: "validate-token";
   token: string;
@@ -49,6 +54,7 @@ type RequestBody =
   | InviteClientRequest
   | SetPasswordRequest
   | LoginRequest
+  | RequestPasswordResetRequest
   | ValidateTokenRequest
   | GetClientProjectsRequest;
 
@@ -233,7 +239,7 @@ serve(async (req) => {
       console.log("Project client link created:", projectClient.id);
 
       // Build invite link
-      const origin = req.headers.get("origin") || SITE_URL || "https://evoltra-suite.com";
+      const origin = req.headers.get("origin") || SITE_URL || "https://evoltra.site";
       const inviteLink = `${origin}/client/accept/${projectClient.invite_token}`;
       console.log("Invite link:", inviteLink);
 
@@ -428,6 +434,101 @@ serve(async (req) => {
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // REQUEST PASSWORD RESET
+    if (body.action === "request-password-reset") {
+      const { email } = body as RequestPasswordResetRequest;
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Always return success to avoid account enumeration.
+      const successResponse = new Response(
+        JSON.stringify({
+          success: true,
+          message: "If this email is linked to a client account, a reset link has been sent.",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+
+      const { data: clientUsers, error: clientLookupError } = await supabase
+        .from("client_users")
+        .select("id, email, full_name, password_hash, created_at")
+        .eq("email", normalizedEmail)
+        .order("created_at", { ascending: false });
+
+      if (clientLookupError || !clientUsers || clientUsers.length === 0) {
+        return successResponse;
+      }
+
+      const clientUser =
+        clientUsers.find((u: { password_hash?: string | null }) => !!u.password_hash) || clientUsers[0];
+
+      const { data: projectClients, error: projectClientError } = await supabase
+        .from("project_clients")
+        .select("id, invite_token, project_id, invite_expires_at, created_at")
+        .eq("client_user_id", clientUser.id)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (projectClientError || !projectClients || projectClients.length === 0) {
+        return successResponse;
+      }
+
+      const targetProjectClient = projectClients[0];
+      const resetToken = crypto.randomUUID();
+      const resetExpiry = new Date(Date.now() + 1000 * 60 * 60 * 24 * 2).toISOString();
+
+      const { error: updateResetError } = await supabase
+        .from("project_clients")
+        .update({
+          invite_token: resetToken,
+          invite_expires_at: resetExpiry,
+          password_set: false,
+        })
+        .eq("id", targetProjectClient.id);
+
+      if (updateResetError) {
+        console.error("Failed to update password reset token:", updateResetError);
+        return successResponse;
+      }
+
+      if (RESEND_API_KEY) {
+        try {
+          const resend = new Resend(RESEND_API_KEY);
+          const origin = req.headers.get("origin") || SITE_URL || "https://evoltra.site";
+          const resetLink = `${origin}/client/reset-password/${resetToken}`;
+          await resend.emails.send({
+            from: "Evoltra <noreply@contact.evoltra.site>",
+            to: [normalizedEmail],
+            subject: "Reset your Evoltra client portal password",
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <body style="font-family: sans-serif; padding: 40px; background: #f4f4f5;">
+                  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px;">
+                    <h1 style="color: #18181b;">Reset your password</h1>
+                    <p style="color: #52525b; line-height: 1.6;">
+                      We received a request to reset your client portal password.
+                    </p>
+                    <div style="text-align: center; margin: 32px 0;">
+                      <a href="${resetLink}" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                        Reset Password
+                      </a>
+                    </div>
+                    <p style="color: #71717a; font-size: 12px;">
+                      This link expires in 48 hours.
+                    </p>
+                  </div>
+                </body>
+              </html>
+            `,
+          });
+        } catch (emailError) {
+          console.error("Failed to send password reset email:", emailError);
+        }
+      }
+
+      return successResponse;
     }
 
     // GET CLIENT PROJECTS

@@ -43,7 +43,7 @@ import {
   ArrowUpRight,
   RefreshCw,
   TriangleAlert
-} from 'lucide-react';
+} from '@/components/ui/icons';
 
 const Settings = () => {
   const { user, profile, updateProfile, signOut } = useAuth();
@@ -314,31 +314,31 @@ const Settings = () => {
   const userInitial = (profile?.full_name || user?.email || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings and preferences</p>
+    <div className="mx-auto w-full max-w-[1180px] space-y-5">
+      <div className="space-y-2">
+        <h1 className="text-[2rem] font-semibold tracking-tight">Settings</h1>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">Manage your account settings and preferences</p>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="inline-flex w-full overflow-x-auto whitespace-nowrap lg:w-auto">
-          <TabsTrigger value="profile" className="gap-2 shrink-0">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 rounded-lg border border-border/60 bg-background/40 p-1 lg:inline-flex lg:w-auto lg:flex-nowrap">
+          <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4 hidden sm:block" />
             Profile
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2 shrink-0">
+          <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4 hidden sm:block" />
             Notifications
           </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2 shrink-0">
+          <TabsTrigger value="security" className="gap-2">
             <Shield className="h-4 w-4 hidden sm:block" />
             Security
           </TabsTrigger>
-          <TabsTrigger value="appearance" className="gap-2 shrink-0">
+          <TabsTrigger value="appearance" className="gap-2">
             <Palette className="h-4 w-4 hidden sm:block" />
             Appearance
           </TabsTrigger>
-          <TabsTrigger value="subscription" className="gap-2 shrink-0">
+          <TabsTrigger value="subscription" className="gap-2">
             <CreditCard className="h-4 w-4 hidden sm:block" />
             Subscription
           </TabsTrigger>
@@ -346,16 +346,16 @@ const Settings = () => {
 
         {/* Profile Tab */}
         <TabsContent value="profile">
-          <Card>
+          <Card className="border-border/60 bg-card/35 shadow-none">
             <CardHeader>
               <CardTitle>Profile Information</CardTitle>
               <CardDescription>Update your personal and business information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
+                <Avatar className="h-16 w-16">
                   <AvatarImage src={profile?.avatar_url || undefined} />
-                  <AvatarFallback className="text-2xl bg-primary/10 text-primary">
+                  <AvatarFallback className="bg-primary/10 text-xl text-primary">
                     {userInitial}
                   </AvatarFallback>
                 </Avatar>
@@ -426,7 +426,7 @@ const Settings = () => {
 
         {/* Notifications Tab */}
         <TabsContent value="notifications">
-          <Card>
+          <Card className="border-border/60 bg-card/35 shadow-none">
             <CardHeader>
               <CardTitle>Notification Preferences</CardTitle>
               <CardDescription>Choose what notifications you want to receive</CardDescription>
@@ -550,7 +550,7 @@ const Settings = () => {
         {/* Security Tab */}
         <TabsContent value="security">
           <div className="space-y-6">
-            <Card>
+            <Card className="border-border/60 bg-card/35 shadow-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
@@ -608,7 +608,7 @@ const Settings = () => {
             
             <TwoFactorSetup />
 
-            <Card className="border-destructive/40">
+            <Card className="border-destructive/40 bg-card/35 shadow-none">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive">
                   <TriangleAlert className="h-5 w-5" />
@@ -634,7 +634,7 @@ const Settings = () => {
 
         {/* Appearance Tab */}
         <TabsContent value="appearance">
-          <Card>
+          <Card className="border-border/60 bg-card/35 shadow-none">
             <CardHeader>
               <CardTitle>Appearance Settings</CardTitle>
               <CardDescription>Customize how Evoltra looks for you</CardDescription>
@@ -659,7 +659,7 @@ const Settings = () => {
               
               <div className="grid gap-4 md:grid-cols-2">
                 <Card 
-                  className={`cursor-pointer transition-all ${!isDark ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
+                  className={`border-border/60 bg-card/30 shadow-none cursor-pointer transition-all ${!isDark ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
                   onClick={() => isDark && toggleTheme()}
                 >
                   <CardContent className="p-4">
@@ -676,7 +676,7 @@ const Settings = () => {
                 </Card>
                 
                 <Card 
-                  className={`cursor-pointer transition-all ${isDark ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
+                  className={`border-border/60 bg-card/30 shadow-none cursor-pointer transition-all ${isDark ? 'ring-2 ring-primary' : 'hover:bg-muted/50'}`}
                   onClick={() => !isDark && toggleTheme()}
                 >
                   <CardContent className="p-4">
@@ -698,7 +698,7 @@ const Settings = () => {
 
         {/* Subscription Tab */}
         <TabsContent value="subscription">
-          <Card>
+          <Card className="border-border/60 bg-card/35 shadow-none">
             <CardHeader>
               <CardTitle>Subscription & Billing</CardTitle>
               <CardDescription>Manage your subscription and billing information</CardDescription>
@@ -755,7 +755,7 @@ const Settings = () => {
               <div>
                 <h3 className="font-medium mb-3">Plan Comparison</h3>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
+                  <Card className="border-border/60 bg-card/30 shadow-none">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-lg">
                         {PLAN_DEFINITIONS.solo.name} ({PLAN_DEFINITIONS.solo.priceLabel})
@@ -775,7 +775,7 @@ const Settings = () => {
                     </CardContent>
                   </Card>
                   
-                  <Card className="border-primary">
+                  <Card className="border-primary/50 bg-card/30 shadow-none">
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-lg">

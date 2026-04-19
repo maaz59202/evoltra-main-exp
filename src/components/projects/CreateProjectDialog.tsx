@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 import {
   Dialog,
@@ -17,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
 import { Organization } from '@/hooks/useProjects';
 
 interface CreateProjectDialogProps {
@@ -133,7 +133,7 @@ const CreateProjectDialog = ({
             <Button type="submit" disabled={isLoading || organizations.length === 0}>
               {isLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Spinner className="w-4 h-4 mr-2" />
                   Creating...
                 </>
               ) : (

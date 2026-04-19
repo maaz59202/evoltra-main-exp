@@ -14,7 +14,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 min-w-0">
           <DashboardNavbar />
-          <main className="flex-1 p-4 md:p-6 min-w-0 overflow-hidden">
+          <main className="min-w-0 flex-1 overflow-auto px-4 py-3 md:px-5 md:py-4 lg:px-6">
             {children}
           </main>
         </SidebarInset>

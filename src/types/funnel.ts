@@ -7,6 +7,7 @@ export type WidgetType =
   | 'button'
   | 'input'
   | 'form'
+  | 'columns'
   | 'container'
   | 'section'
   | 'spacer';
@@ -49,6 +50,7 @@ export interface ButtonWidgetProps {
   variant: 'primary' | 'secondary' | 'outline';
   backgroundColor: string;
   textColor: string;
+  alignment?: 'left' | 'center' | 'right';
   icon?: string;
 }
 
@@ -72,6 +74,17 @@ export interface ContainerWidgetProps {
   borderRadius: number;
 }
 
+export interface ColumnsWidgetProps {
+  columns: 2 | 3 | 4;
+  gap: number;
+  padding: number;
+  margin: number;
+  backgroundColor: string;
+  borderRadius: number;
+  stackOnMobile: boolean;
+  verticalAlign: 'start' | 'center' | 'end';
+}
+
 export interface SectionWidgetProps {
   backgroundType: 'solid' | 'gradient' | 'image';
   backgroundColor: string;
@@ -92,6 +105,7 @@ export type WidgetProps =
   | ButtonWidgetProps
   | InputWidgetProps
   | FormWidgetProps
+  | ColumnsWidgetProps
   | ContainerWidgetProps
   | SectionWidgetProps
   | SpacerWidgetProps;
@@ -153,6 +167,7 @@ export const getDefaultButtonProps = (): ButtonWidgetProps => ({
   variant: 'primary',
   backgroundColor: '#3b82f6',
   textColor: '#ffffff',
+  alignment: 'left',
 });
 
 export const getDefaultInputProps = (): InputWidgetProps => ({
@@ -175,6 +190,17 @@ export const getDefaultContainerProps = (): ContainerWidgetProps => ({
   borderRadius: 8,
 });
 
+export const getDefaultColumnsProps = (): ColumnsWidgetProps => ({
+  columns: 2,
+  gap: 24,
+  padding: 0,
+  margin: 0,
+  backgroundColor: 'transparent',
+  borderRadius: 0,
+  stackOnMobile: true,
+  verticalAlign: 'start',
+});
+
 export const getDefaultSectionProps = (): SectionWidgetProps => ({
   backgroundType: 'solid',
   backgroundColor: '#ffffff',
@@ -193,6 +219,7 @@ export const getDefaultPropsForType = (type: WidgetType): WidgetProps => {
     case 'button': return getDefaultButtonProps();
     case 'input': return getDefaultInputProps();
     case 'form': return getDefaultFormProps();
+    case 'columns': return getDefaultColumnsProps();
     case 'container': return getDefaultContainerProps();
     case 'section': return getDefaultSectionProps();
     case 'spacer': return getDefaultSpacerProps();

@@ -1,16 +1,17 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
-import { ArrowLeft, CalendarDays, ExternalLink, Loader2, ReceiptText } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ExternalLink,  ReceiptText, Printer } from '@/components/ui/icons';
 
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
-import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import { formatCurrencyAmount, getCurrencyConfig, type SupportedCurrencyCode } from '@/lib/currency';
-import { getPaymentReceivingRows, parsePaymentReceivingDetails } from '@/lib/payment-receiving';
+import { getPaymentReceivingSections, parsePaymentReceivingDetailsCollection } from '@/lib/payment-receiving';
+import { getClientPortalPaletteTheme, getStoredClientPortalPalette } from '@/lib/client-portal-theme';
 
 type ClientInvoiceRecord = {
   id: string;
@@ -48,6 +49,12 @@ type ClientInvoiceRecord = {
   }>;
 };
 
+const getClientFacingInvoiceStatusLabel = (status: ClientInvoiceRecord['status']) => {
+  if (status === 'paid') return 'Paid';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'Unpaid';
+};
+
 const ClientInvoiceView = () => {
   const { invoiceId } = useParams<{ invoiceId: string }>();
   const navigate = useNavigate();
@@ -55,6 +62,7 @@ const ClientInvoiceView = () => {
 
   const [invoice, setInvoice] = useState<ClientInvoiceRecord | null>(null);
   const [loading, setLoading] = useState(true);
+  const palette = getStoredClientPortalPalette();
 
   useEffect(() => {
     if (!authLoading && !client) {
@@ -91,13 +99,13 @@ const ClientInvoiceView = () => {
     }
   };
 
-  const paymentReceivingDetails = useMemo(
-    () => parsePaymentReceivingDetails(invoice?.organization),
+  const paymentReceivingMethods = useMemo(
+    () => parsePaymentReceivingDetailsCollection(invoice?.organization),
     [invoice?.organization],
   );
-  const paymentRows = useMemo(
-    () => (paymentReceivingDetails ? getPaymentReceivingRows(paymentReceivingDetails) : []),
-    [paymentReceivingDetails],
+  const paymentSections = useMemo(
+    () => getPaymentReceivingSections(paymentReceivingMethods),
+    [paymentReceivingMethods],
   );
   const taxAmount = useMemo(() => {
     if (!invoice) return 0;
@@ -108,7 +116,7 @@ const ClientInvoiceView = () => {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Spinner className="h-8 w-8 text-primary" />
       </div>
     );
   }
@@ -137,19 +145,25 @@ const ClientInvoiceView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="invoice-print-page client-invoice-print bg-background p-6" style={getClientPortalPaletteTheme(palette)}>
       <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="invoice-screen-controls flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
               <ReceiptText className="h-4 w-4" />
               <span>{invoice.invoice_number}</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight">Invoice</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Status: <span className="font-medium text-foreground">{getClientFacingInvoiceStatusLabel(invoice.status)}</span>
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <InvoiceStatusBadge status={invoice.status} />
+            <Button variant="outline" onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" />
+              Print / Save PDF
+            </Button>
             <Button variant="outline" onClick={() => navigate('/client/portal')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Portal
@@ -157,10 +171,10 @@ const ClientInvoiceView = () => {
           </div>
         </div>
 
-        <Card className="border-border/70 bg-card/70">
+        <Card className="invoice-paper client-invoice-paper border-border/70 bg-card/70">
           <CardContent className="space-y-8 p-8">
-            <div className="grid gap-8 lg:grid-cols-[1.05fr_1fr]">
-              <div className="rounded-[28px] border border-border/70 bg-background/30 p-6">
+            <div className="invoice-top-grid grid gap-8 lg:grid-cols-[1.05fr_1fr]">
+              <div className="invoice-panel rounded-[28px] border border-border/70 bg-background/30 p-6">
                 <p className="mb-6 text-sm uppercase tracking-[0.18em] text-muted-foreground">From</p>
                 <div className="space-y-5">
                   <div>
@@ -174,7 +188,7 @@ const ClientInvoiceView = () => {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-border/70 bg-background/30 p-6">
+              <div className="invoice-panel rounded-[28px] border border-border/70 bg-background/30 p-6">
                 <p className="mb-6 text-sm uppercase tracking-[0.18em] text-muted-foreground">Bill To</p>
                 <div className="space-y-5">
                   <div>
@@ -189,28 +203,28 @@ const ClientInvoiceView = () => {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-[24px] border border-border/70 bg-background/30 p-5">
+            <div className="invoice-meta-grid grid gap-4 md:grid-cols-3">
+              <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
                 <p className="mb-3 text-sm uppercase tracking-[0.18em] text-muted-foreground">Issue Date</p>
                 <div className="flex items-center gap-3">
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <span>{format(new Date(invoice.created_at), 'MM/dd/yyyy')}</span>
                 </div>
               </div>
-              <div className="rounded-[24px] border border-border/70 bg-background/30 p-5">
+              <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
                 <p className="mb-3 text-sm uppercase tracking-[0.18em] text-muted-foreground">Due Date</p>
                 <div className="flex items-center gap-3">
                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
                   <span>{invoice.due_date ? format(new Date(invoice.due_date), 'MM/dd/yyyy') : 'No due date'}</span>
                 </div>
               </div>
-              <div className="rounded-[24px] border border-border/70 bg-background/30 p-5">
+              <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
                 <p className="mb-3 text-sm uppercase tracking-[0.18em] text-muted-foreground">Currency</p>
                 <span>{currencyLabel}</span>
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[28px] border border-border/70 bg-background/20">
+            <div className="invoice-line-items overflow-hidden rounded-[28px] border border-border/70 bg-background/20">
               <div className="grid grid-cols-12 gap-3 border-b border-border/70 px-6 py-4 text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 <div className="col-span-6">Description</div>
                 <div className="col-span-2">Qty</div>
@@ -232,7 +246,7 @@ const ClientInvoiceView = () => {
               </div>
             </div>
 
-            <div className="ml-auto max-w-sm space-y-2 rounded-[24px] border border-border/70 bg-background/30 p-5">
+            <div className="invoice-totals ml-auto max-w-sm space-y-2 rounded-[24px] border border-border/70 bg-background/30 p-5">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatCurrencyAmount(Number(invoice.subtotal), invoice.currency)}</span>
@@ -248,20 +262,27 @@ const ClientInvoiceView = () => {
             </div>
 
             {invoice.notes && (
-              <div className="rounded-[24px] border border-border/70 bg-background/30 p-5">
+              <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
                 <p className="mb-2 text-sm uppercase tracking-[0.18em] text-muted-foreground">Notes</p>
                 <p className="text-sm text-muted-foreground">{invoice.notes}</p>
               </div>
             )}
 
-            {paymentReceivingDetails && (
-              <div className="rounded-[24px] border border-border/70 bg-background/30 p-5">
+            {paymentReceivingMethods.length > 0 && (
+              <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
                 <p className="mb-4 text-sm uppercase tracking-[0.18em] text-muted-foreground">Payment Receiving Details</p>
-                <div className="space-y-3 text-sm">
-                  {paymentRows.map((row) => (
-                    <div key={row.label} className="flex items-center justify-between gap-4">
-                      <span className="text-muted-foreground">{row.label}</span>
-                      <span>{row.value}</span>
+                <div className="space-y-5 text-sm">
+                  {paymentSections.map((section) => (
+                    <div key={section.key} className="space-y-3">
+                      <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        {section.title}
+                      </p>
+                      {section.rows.map((row) => (
+                        <div key={`${section.key}-${row.label}`} className="flex items-center justify-between gap-4">
+                          <span className="text-muted-foreground">{row.label}</span>
+                          <span>{row.value}</span>
+                        </div>
+                      ))}
                     </div>
                   ))}
                   {invoice.organization?.payment_link && (

@@ -39,12 +39,23 @@ import CookiePolicy from "./pages/CookiePolicy";
 
 // Client Portal Pages
 import ClientLogin from "./pages/client/ClientLogin";
+import ClientForgotPassword from "./pages/client/ClientForgotPassword";
 import ClientAcceptInvite from "./pages/client/ClientAcceptInvite";
+import ClientResetPassword from "./pages/client/ClientResetPassword";
 import ClientPortal from "./pages/client/ClientPortal";
 import ClientProjectView from "./pages/client/ClientProjectView";
 import ClientInvoiceView from "./pages/client/ClientInvoiceView";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+      retry: false,
+    },
+  },
+});
 
 // Wrapper component for dashboard pages
 const WithDashboardLayout = ({ children }: { children: React.ReactNode }) => (
@@ -199,7 +210,9 @@ const App = () => (
               
               {/* Client Portal Routes */}
               <Route path="/client/login" element={<ClientLogin />} />
+              <Route path="/client/forgot-password" element={<ClientForgotPassword />} />
               <Route path="/client/accept/:token" element={<ClientAcceptInvite />} />
+              <Route path="/client/reset-password/:token" element={<ClientResetPassword />} />
               <Route path="/client/portal" element={<ClientPortal />} />
               <Route path="/client/project/:projectId" element={<ClientProjectView />} />
               <Route path="/client/invoice/:invoiceId" element={<ClientInvoiceView />} />

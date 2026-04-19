@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Moon, Sun, LogOut } from 'lucide-react';
+import { Moon, Sun, LogOut } from '@/components/ui/icons';
 import { useState, useEffect } from 'react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import NotificationDropdown from './NotificationDropdown';
@@ -13,10 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const DashboardNavbar = () => {
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [isDark, setIsDark] = useState(false);
 
@@ -49,19 +49,18 @@ const DashboardNavbar = () => {
     navigate('/');
   };
 
-  const userInitial = user?.email?.charAt(0).toUpperCase() || 'U';
+  const userInitial = (profile?.full_name || user?.email || 'U').charAt(0).toUpperCase();
 
   return (
-    <div className="app-navbar flex h-12 items-center justify-between gap-4 border-b bg-background px-4">
-      <SidebarTrigger />
+    <div className="app-navbar flex h-11 items-center justify-between gap-4 border-b border-border/70 bg-background/95 px-3 backdrop-blur md:px-4">
+      <SidebarTrigger className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground dark:text-white/85 dark:hover:text-white" />
 
-      {/* Right side actions */}
       <div className="flex items-center gap-2">
         <Button
           variant="ghost"
           size="icon"
           onClick={toggleTheme}
-          className="h-9 w-9"
+          className="h-8 w-8 rounded-md text-muted-foreground hover:text-foreground dark:text-white/85 dark:hover:text-white"
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
@@ -70,8 +69,9 @@ const DashboardNavbar = () => {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <Avatar className="h-9 w-9">
+            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={profile?.avatar_url || undefined} alt={userInitial} />
                 <AvatarFallback className="bg-primary/10 text-primary">
                   {userInitial}
                 </AvatarFallback>
@@ -81,7 +81,7 @@ const DashboardNavbar = () => {
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Account</p>
+                <p className="text-sm font-medium leading-none">{profile?.full_name || 'Account'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {user?.email}
                 </p>

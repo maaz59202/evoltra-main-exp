@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MoreHorizontal, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, Trash2, X } from '@/components/ui/icons';
 import TaskCard from './TaskCard';
 import { OrganizationMember } from '@/hooks/useOrganizationMembers';
 import { Task } from '@/hooks/useTasks';

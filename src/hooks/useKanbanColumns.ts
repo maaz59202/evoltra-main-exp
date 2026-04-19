@@ -57,7 +57,7 @@ export const useKanbanColumns = (projectId: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [user, projectId]);
+  }, [user?.id, projectId]);
 
   const createColumn = async (name: string) => {
     if (!user || !projectId) throw new Error('Must be logged in with a project selected');

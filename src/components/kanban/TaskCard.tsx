@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { GripVertical, MoreHorizontal, Pencil, Trash2, Check, X, User } from 'lucide-react';
+import { GripVertical, MoreHorizontal, Pencil, Trash2, Check, X, User } from '@/components/ui/icons';
 import { Task, TaskPriority } from '@/hooks/useTasks';
 import { OrganizationMember } from '@/hooks/useOrganizationMembers';
 
@@ -39,8 +39,8 @@ interface TaskCardProps {
 
 const priorityColors: Record<TaskPriority, string> = {
   low: 'bg-muted text-muted-foreground',
-  medium: 'bg-warning/20 text-warning border-warning/30',
-  high: 'bg-destructive/20 text-destructive border-destructive/30',
+  medium: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/20',
+  high: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/20',
 };
 
 const TaskCard = ({ task, members = [], onUpdate, onDelete }: TaskCardProps) => {

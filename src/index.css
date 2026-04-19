@@ -6,58 +6,58 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 30% 10%;
+    --background: 220 18% 94%;
+    --foreground: 220 45% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 30% 10%;
+    --card-foreground: 220 45% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 30% 10%;
+    --popover-foreground: 220 45% 15%;
 
-    --primary: 250 85% 60%;
+    --primary: 250 85% 58%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 92%;
-    --secondary-foreground: 220 30% 10%;
+    --secondary: 220 15% 88%;
+    --secondary-foreground: 220 45% 15%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 10% 45%;
+    --muted: 220 15% 88%;
+    --muted-foreground: 220 20% 35%;
 
-    --accent: 280 80% 55%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 250 85% 93%;
+    --accent-foreground: 250 85% 40%;
 
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 250 85% 60%;
+    --border: 220 20% 82%;
+    --input: 220 20% 82%;
+    --ring: 250 85% 58%;
 
     --radius: 0.75rem;
 
     /* Evoltra specific */
     --glass: 0 0% 100%;
-    --glass-border: 220 20% 90%;
-    --gradient-start: 250 85% 60%;
+    --glass-border: 220 20% 80%;
+    --gradient-start: 250 85% 58%;
     --gradient-end: 280 80% 55%;
-    --success: 145 65% 45%;
+    --success: 145 65% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 45%;
     --warning-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 220 30% 10%;
-    --sidebar-primary: 250 85% 60%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 45% 15%;
+    --sidebar-primary: 250 85% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 92%;
-    --sidebar-accent-foreground: 220 30% 10%;
-    --sidebar-border: 220 15% 88%;
-    --sidebar-ring: 250 85% 60%;
+    --sidebar-accent: 250 85% 93%;
+    --sidebar-accent-foreground: 250 85% 40%;
+    --sidebar-border: 220 20% 82%;
+    --sidebar-ring: 250 85% 58%;
 
-    --scrollbar-track: 220 20% 93%;
-    --scrollbar-thumb: 220 10% 68%;
-    --scrollbar-thumb-hover: 250 70% 58%;
+    --scrollbar-track: 220 20% 90%;
+    --scrollbar-thumb: 220 15% 65%;
+    --scrollbar-thumb-hover: 250 70% 55%;
   }
 
   .dark {
@@ -268,6 +268,7 @@
     max-width: none !important;
     margin: 0 !important;
     padding: 0 !important;
+    min-height: 0 !important;
   }
 
   .invoice-paper {
@@ -391,5 +392,9 @@
   .invoice-line-items .border-b,
   .invoice-paper .border-t {
     border-color: #d4d4d8 !important;
+  }
+
+  .client-invoice-print {
+    min-height: 0 !important;
   }
 }

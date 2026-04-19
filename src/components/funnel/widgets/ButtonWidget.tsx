@@ -8,6 +8,8 @@ interface Props {
 }
 
 export const ButtonWidget = ({ props, isSelected, isPreview }: Props) => {
+  const alignment = props.alignment ?? 'left';
+
   const handleClick = (e: React.MouseEvent) => {
     if (!isPreview) {
       e.preventDefault();
@@ -18,6 +20,8 @@ export const ButtonWidget = ({ props, isSelected, isPreview }: Props) => {
     <div
       className={cn(
         'w-full transition-all',
+        alignment === 'center' && 'flex justify-center',
+        alignment === 'right' && 'flex justify-end',
         !isPreview && isSelected && 'ring-2 ring-primary ring-offset-2 rounded-lg'
       )}
     >

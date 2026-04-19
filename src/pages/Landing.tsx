@@ -13,7 +13,7 @@ import {
   CreditCard,
   ArrowRight,
   Check
-} from 'lucide-react';
+} from '@/components/ui/icons';
 
 const features = [
   {
@@ -68,13 +68,26 @@ const plans = [
   }
 ];
 
+const customerFaces = [
+  'https://i.pravatar.cc/80?img=12',
+  'https://i.pravatar.cc/80?img=32',
+  'https://i.pravatar.cc/80?img=47',
+  'https://i.pravatar.cc/80?img=60',
+];
+
+const aboutPoints = [
+  'One workspace for projects, clients, funnels, billing, and collaboration.',
+  'Built for freelancers and lean teams who need client work to stay organized without extra tools.',
+  'Keeps delivery, communication, and invoicing tied to the same project context.',
+] as const;
+
 const Landing = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      <section id="home" className="relative overflow-hidden pt-32 pb-20">
         {/* Background decoration */}
         <div className="absolute inset-0 bg-hero-pattern opacity-50" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-float" />
@@ -98,10 +111,14 @@ const Landing = () => {
               </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-              <Button size="lg" className="gradient-primary text-white px-8 h-12 text-lg" asChild>
+              <Button
+                size="lg"
+                className="group h-12 px-8 text-lg text-white shadow-[0_18px_50px_rgba(92,61,255,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.015] hover:shadow-[0_24px_60px_rgba(92,61,255,0.34)] gradient-primary"
+                asChild
+              >
                 <Link to="/signup">
                   Get Started Free
-                  <ArrowRight className="ml-2 w-5 h-5" />
+                  <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" className="h-12 text-lg" asChild>
@@ -112,13 +129,14 @@ const Landing = () => {
             {/* Social proof */}
             <div className="mt-12 flex items-center justify-center gap-2 text-muted-foreground animate-fade-in" style={{ animationDelay: '0.4s' }}>
               <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div 
-                    key={i} 
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white text-xs font-medium border-2 border-background"
-                  >
-                    {String.fromCharCode(64 + i)}
-                  </div>
+                {customerFaces.map((face, index) => (
+                  <img
+                    key={face}
+                    src={face}
+                    alt={`Customer ${index + 1}`}
+                    className="h-9 w-9 rounded-full border-2 border-background object-cover shadow-sm"
+                    loading="lazy"
+                  />
                 ))}
               </div>
               <span className="ml-2">Used by freelancers and small teams</span>
@@ -128,7 +146,7 @@ const Landing = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-card/30">
+      <section id="features" className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
@@ -155,6 +173,38 @@ const Landing = () => {
                 </CardContent>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="py-20">
+        <div className="container mx-auto px-4">
+          <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                About us
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                Evoltra keeps the client-work stack tighter, calmer, and easier to run.
+              </h2>
+              <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+                We are building Evoltra for people who actually have to deliver client work, chase approvals,
+                manage tasks, invoice correctly, and keep communication in one place without bloated software.
+              </p>
+            </div>
+            <div className="grid gap-4">
+              {aboutPoints.map((point) => (
+                <Card key={point} className="border-border/70 bg-background/55 shadow-none">
+                  <CardContent className="flex items-start gap-4 p-5">
+                    <div className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary/12 text-primary">
+                      <Check className="h-4 w-4" />
+                    </div>
+                    <p className="text-sm leading-7 text-muted-foreground">{point}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -220,7 +270,7 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-card/30">
+      <section id="contact" className="py-20 bg-card/30">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center glass-card p-12 rounded-2xl relative overflow-hidden">
             <div className="absolute inset-0 gradient-primary opacity-5" />
@@ -231,6 +281,12 @@ const Landing = () => {
               <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
                  Set up your workspace, invite a client, and start tracking work without juggling multiple tools.
               </p>
+              <div className="mb-6 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+                <a href="mailto:support@evoltra.com" className="rounded-full border border-border/70 px-4 py-2 transition-colors hover:border-primary/40 hover:text-foreground">
+                  support@evoltra.com
+                </a>
+                <span className="rounded-full border border-border/70 px-4 py-2">Contact us for demos, sales, or onboarding help</span>
+              </div>
               <Button size="lg" className="gradient-primary text-white px-8 h-12 text-lg" asChild>
                 <Link to="/signup">
                   Get Started Free

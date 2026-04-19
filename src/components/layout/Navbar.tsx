@@ -1,9 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { Moon, Sun, Menu, X } from 'lucide-react';
+import { Moon, Sun, Menu, X } from '@/components/ui/icons';
 import { useState, useEffect } from 'react';
 import NotificationDropdown from './NotificationDropdown';
+
+const marketingLinks = [
+  { label: 'Home', href: '/#home' },
+  { label: 'About Us', href: '/#about' },
+  { label: 'Pricing', href: '/#pricing' },
+  { label: 'Features', href: '/#features' },
+  { label: 'Contact Us', href: '/#contact' },
+] as const;
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -54,12 +62,11 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            <Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">
-              Pricing
-            </Link>
-            <Link to="/docs" className="text-muted-foreground hover:text-foreground transition-colors">
-              Docs
-            </Link>
+            {marketingLinks.map((item) => (
+              <a key={item.label} href={item.href} className="text-muted-foreground hover:text-foreground transition-colors">
+                {item.label}
+              </a>
+            ))}
             
             <button
               onClick={toggleTheme}
@@ -105,20 +112,16 @@ const Navbar = () => {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-glass-border">
             <div className="flex flex-col gap-3">
-              <Link 
-                to="/pricing" 
-                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Pricing
-              </Link>
-              <Link 
-                to="/docs" 
-                className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Docs
-              </Link>
+              {marketingLinks.map((item) => (
+                <a
+                  key={item.label}
+                  href={item.href}
+                  className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.label}
+                </a>
+              ))}
               
               <button
                 onClick={toggleTheme}

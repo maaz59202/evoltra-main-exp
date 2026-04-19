@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
@@ -6,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff,  } from '@/components/ui/icons';
+import { Link } from 'react-router-dom';
 
 const ClientLogin = () => {
   const navigate = useNavigate();
@@ -84,13 +86,22 @@ const ClientLogin = () => {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Spinner className="mr-2 h-4 w-4" />
                   Signing in...
                 </>
               ) : (
                 'Sign In'
               )}
             </Button>
+
+            <div className="text-right">
+              <Link
+                to="/client/forgot-password"
+                className="text-sm text-primary hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">

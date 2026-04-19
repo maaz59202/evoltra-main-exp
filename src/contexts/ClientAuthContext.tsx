@@ -12,6 +12,7 @@ interface ClientAuthContextType {
   client: ClientUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ error: string | null }>;
+  requestPasswordReset: (email: string) => Promise<{ error: string | null }>;
   logout: () => void;
   setClientFromInvite: (clientId: string, email: string, fullName?: string) => void;
 }
@@ -99,6 +100,35 @@ export const ClientAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const requestPasswordReset = async (email: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('client-auth', {
+        body: { action: 'request-password-reset', email },
+      });
+
+      if (error) {
+        if (error instanceof FunctionsHttpError) {
+          try {
+            const errorResponse = await error.context.json();
+            return { error: errorResponse?.error || error.message };
+          } catch {
+            return { error: error.message };
+          }
+        }
+        return { error: error.message };
+      }
+
+      if (!data?.success) {
+        return { error: data?.error || 'Unable to process reset request' };
+      }
+
+      return { error: null };
+    } catch (err) {
+      console.error('Client password reset request error:', err);
+      return { error: 'Failed to request password reset' };
+    }
+  };
+
   const logout = () => {
     setClient(null);
     safeStorage.remove(CLIENT_STORAGE_KEY);
@@ -115,7 +145,7 @@ export const ClientAuthProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   return (
-    <ClientAuthContext.Provider value={{ client, loading, login, logout, setClientFromInvite }}>
+    <ClientAuthContext.Provider value={{ client, loading, login, requestPasswordReset, logout, setClientFromInvite }}>
       {children}
     </ClientAuthContext.Provider>
   );

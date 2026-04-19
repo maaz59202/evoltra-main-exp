@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useFunnels } from '@/hooks/useFunnels';
@@ -6,7 +7,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Edit, ExternalLink, MoreVertical, Loader2, Lock, FileText, Sparkles, UserPlus, Megaphone, PartyPopper, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Edit, ExternalLink, MoreVertical,  Lock, FileText, Sparkles, UserPlus, Megaphone, PartyPopper, ArrowLeft } from '@/components/ui/icons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,9 +22,8 @@ import { ROLE_PERMISSIONS } from '@/data/productCopy';
 const Funnels = () => {
   const navigate = useNavigate();
   const { funnels, isLoading, deleteFunnel, createFunnel, isCreating, isDeleting } = useFunnels();
-  const { isSolo } = useSubscription();
+  const { isSolo, loading: subscriptionLoading } = useSubscription();
   const { organizations, selectedOrgId } = useProjects();
-  const soloLimitReached = isSolo && funnels.length >= 1;
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<FunnelTemplate | null>(null);
@@ -40,6 +40,10 @@ const Funnels = () => {
   const visibleFunnels = selectedOrgId
     ? funnels.filter((funnel) => funnel.workspaceId === selectedOrgId)
     : funnels;
+  const createOrgFunnelsCount = createOrganizationId
+    ? funnels.filter((funnel) => funnel.workspaceId === createOrganizationId).length
+    : 0;
+  const soloLimitReached = !subscriptionLoading && isSolo && createOrgFunnelsCount >= 1;
 
   const handleDelete = async () => {
     if (deleteId) {
@@ -118,13 +122,16 @@ const Funnels = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isSolo && (
+          {!subscriptionLoading && isSolo && (
             <Badge variant="secondary" className="gap-1">
               <Lock className="w-3 h-3" />
-              {visibleFunnels.length}/1 Funnel
+              {createOrgFunnelsCount}/1 Funnel
             </Badge>
           )}
-          <Button onClick={handleOpenCreateDialog} disabled={!createOrganizationId || !selectedPermissions?.manageFunnels}>
+          <Button
+            onClick={handleOpenCreateDialog}
+            disabled={subscriptionLoading || !createOrganizationId || !selectedPermissions?.manageFunnels}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Create Funnel
           </Button>
@@ -133,7 +140,7 @@ const Funnels = () => {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <Spinner className="w-8 h-8 text-muted-foreground" />
         </div>
       ) : visibleFunnels.length === 0 ? (
         <Card className="border-dashed">
@@ -145,7 +152,10 @@ const Funnels = () => {
             <p className="text-muted-foreground text-center mb-4 max-w-md">
               Create your first funnel to start building landing pages for lead capture and conversions.
             </p>
-            <Button onClick={handleOpenCreateDialog} disabled={!createOrganizationId || !selectedPermissions?.manageFunnels}>
+            <Button
+              onClick={handleOpenCreateDialog}
+              disabled={subscriptionLoading || !createOrganizationId || !selectedPermissions?.manageFunnels}
+            >
               <Plus className="w-4 h-4 mr-2" />
               {selectedPermissions?.manageFunnels ? 'Create Your First Funnel' : 'No funnels available'}
             </Button>
@@ -323,7 +333,7 @@ const Funnels = () => {
               >
                 {isCreating ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Spinner className="w-4 h-4 mr-2" />
                     Creating...
                   </>
                 ) : (

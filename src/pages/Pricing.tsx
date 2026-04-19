@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -14,11 +15,8 @@ import {
   X, 
   Zap, 
   Users, 
-  Loader2,
-  CreditCard,
-} from 'lucide-react';
-import easypaisaLogo from '@/assets/easypaisa-logo.jpeg';
-import jazzcashLogo from '@/assets/jazzcash-logo.jpeg';
+  
+} from '@/components/ui/icons';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
 
@@ -31,7 +29,6 @@ const Pricing = () => {
     loading: subscriptionLoading, 
     checkSubscription,
     createCheckout,
-    waitForSubscriptionUpdate,
     isTeam 
   } = useSubscription();
   const [syncing, setSyncing] = useState(false);
@@ -55,16 +52,11 @@ const Pricing = () => {
   const handlePostCheckout = async () => {
     setSyncing(true);
     toast.loading('Verifying your subscription...', { id: 'sub-sync' });
-    
-    const success = await waitForSubscriptionUpdate();
-    
-    if (success) {
-      toast.success(`Welcome to ${PLAN_DEFINITIONS.team.name} plan! Your subscription is now active.`, { id: 'sub-sync' });
-    } else {
-      // Fallback: try one more direct check
-      await checkSubscription();
-      toast.info('Payment received! Your plan may take a moment to update.', { id: 'sub-sync' });
-    }
+
+    await checkSubscription();
+    toast.info('Payment received. Refresh subscription status manually if it does not update right away.', {
+      id: 'sub-sync',
+    });
     setSyncing(false);
   };
 
@@ -128,7 +120,7 @@ const Pricing = () => {
           {syncing && (
             <div className="fixed inset-0 z-50 bg-background/80 flex items-center justify-center">
               <div className="text-center space-y-4">
-                <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
+                <Spinner className="w-8 h-8 mx-auto text-primary" />
                 <p className="text-lg font-medium">Verifying your subscription...</p>
                 <p className="text-sm text-muted-foreground">This usually takes a few seconds</p>
               </div>
@@ -151,14 +143,6 @@ const Pricing = () => {
                     </Badge>
                   </div>
                 )}
-                {plan.isCurrent && (
-                  <div className="absolute top-0 right-0">
-                    <Badge className="rounded-none rounded-bl-lg bg-success text-white">
-                      Your Plan
-                    </Badge>
-                  </div>
-                )}
-                
                 <CardHeader className="pb-8">
                   <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center text-white mb-4">
                     {plan.icon}
@@ -217,46 +201,6 @@ const Pricing = () => {
                 </CardContent>
               </Card>
             ))}
-          </div>
-
-          {/* Payment Methods */}
-          <div className="max-w-2xl mx-auto">
-            <h3 className="text-center text-lg font-semibold mb-6">Payment Methods</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Card className="glass-card p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-[#635BFF] flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Stripe</p>
-                    <p className="text-xs text-success">Active</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="glass-card p-4 opacity-60">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
-                    <img src={easypaisaLogo} alt="EasyPaisa" className="w-10 h-10 object-contain" />
-                  </div>
-                  <div>
-                    <p className="font-medium">EasyPaisa</p>
-                    <p className="text-xs text-muted-foreground">Coming Soon</p>
-                  </div>
-                </div>
-              </Card>
-              <Card className="glass-card p-4 opacity-60">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center">
-                    <img src={jazzcashLogo} alt="JazzCash" className="w-10 h-10 object-contain" />
-                  </div>
-                  <div>
-                    <p className="font-medium">JazzCash</p>
-                    <p className="text-xs text-muted-foreground">Coming Soon</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
           </div>
 
           {/* FAQ Teaser */}

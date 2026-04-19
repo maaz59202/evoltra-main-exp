@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, ExternalLink, Download } from 'lucide-react';
+import {  Users, ExternalLink, Download } from '@/components/ui/icons';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -153,7 +154,7 @@ const Leads = () => {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Spinner className="w-8 h-8 text-primary" />
         </div>
       ) : leads.length === 0 ? (
         <Card>

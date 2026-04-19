@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Check, MessageSquare, Trash2 } from 'lucide-react';
+import { Bell, Check, MessageSquare, Trash2 } from '@/components/ui/icons';
 import { formatDistanceToNow } from 'date-fns';
 
 const NotificationDropdown = () => {
@@ -22,7 +22,7 @@ const NotificationDropdown = () => {
   const handleNotificationClick = (notification: typeof notifications[0]) => {
     markAsRead(notification.id);
     if (notification.project_id) {
-      navigate(`/projects?project=${notification.project_id}&tab=messages`);
+      navigate(`/project/${notification.project_id}?tab=messages`);
     }
     setOpen(false);
   };
@@ -30,7 +30,7 @@ const NotificationDropdown = () => {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-foreground dark:text-white/85 dark:hover:text-white">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-medium">
@@ -65,16 +65,16 @@ const NotificationDropdown = () => {
             notifications.map((notification) => (
               <DropdownMenuItem
                 key={notification.id}
-                className={`flex items-start gap-3 p-3 cursor-pointer whitespace-normal ${
-                  !notification.read ? 'bg-accent/50' : ''
+                className={`flex cursor-pointer items-start gap-3 whitespace-normal rounded-lg p-3 transition-colors focus:bg-muted/80 focus:text-foreground ${
+                  !notification.read ? 'bg-primary/6 hover:bg-primary/10' : 'hover:bg-muted/60'
                 }`}
                 onClick={() => handleNotificationClick(notification)}
               >
                 <div
-                  className={`p-2 rounded-full shrink-0 ${
+                  className={`shrink-0 rounded-full p-2 ${
                     notification.type === 'message'
                       ? 'bg-primary/10 text-primary'
-                      : 'bg-muted'
+                      : 'bg-muted/70 text-foreground'
                   }`}
                 >
                   <MessageSquare className="h-4 w-4" />
@@ -99,7 +99,7 @@ const NotificationDropdown = () => {
                     e.stopPropagation();
                     deleteNotification(notification.id);
                   }}
-                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

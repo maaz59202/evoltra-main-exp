@@ -1,0 +1,146 @@
+
+--- PAGE 1 ---
+
+Issue 
+1.​ Evoltra Logo not updated yet in header 
+ 
+2.​ Create New nav bar including home, about us, pricing, features, contact 
+us. 
+ 
+3.​ Beautification of whole landing page and all pages. 
+ 
+4.​ Hero section>get started button should have some hover, or animation. 
+ 
+5.​ Change initials with real pictures in hero section after cta. 
+ 
+ 
+6.​ Dont make different page for features, add a css class on features section 
+in home and link it with. 
+ 
+ 
+7.​ Update Footer with proper links, pages and information footer should have 
+quicklinks like home about us pricing features contact us privacy policy 
+cookie policy terms and conditions. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+--- PAGE 2 ---
+
+8.​ In pricing page> the solo plan showing your plan on top by default remove 
+it. 
+ 
+ 
+9.​ Github Authorization not working 
+ 
+
+--- PAGE 3 ---
+
+10.​
+On onboarding step 3 change 5th option of invoice clients to invoices 
+management
+ 
+
+--- PAGE 4 ---
+
+11.​ In dark mode>dashboard change color of icons to white
+ 
+
+--- PAGE 5 ---
+
+12.​
+In project> change color of active button and priority flag color it is light 
+and not looking correctly in white mode. Make it more dark color.
+ 
+13.​
+When the page is refreshed after selecting the “All Organization” filter, 
+the user is redirected to a different project; auto-refresh should be disabled 
+in this case. 
+14.​
+The form’s width and padding are incorrect, causing the sides to be cut 
+off; adjust spacing to ensure proper layout and visibility. Also add word limit 
+in description
+ 
+15.​
+Remove autorefresh option from project. 
+16.​
+The auto-refresh option in the whole dashboard should be removed. 
+
+--- PAGE 6 ---
+
+17.​
+Add a secure password feature with a password strength indicator and 
+a leak/breach check during password creation. 
+18.​
+Improve the Client Portal UI and add a color palette option for 
+customization. Add a notification icon to the top header in the client portal 
+for better visibility of alerts and updates. It should also display the 
+organization name under project name.
+ 
+
+--- PAGE 7 ---
+
+19.​
+On hover over notifications, the dark background color makes the 
+content hard to read; update the hover color to improve visibility.
+ 
+20.​
+Add margin to the top header for better spacing and implement a 
+notification dot on the message icon when a new message arrives.
+ 
+
+--- PAGE 8 ---
+
+21.​
+Improve the visual design of the messages section in light mode.
+ 
+22.​
+Add a Puck builder and improve the funnel builder; lead capture is not 
+working on button clicks, and captured leads are not appearing in the leads 
+section. 
+23.​
+Invoice creation is not capturing all organizations; it defaults to the first 
+created organization instead of allowing selection. The system should 
+prompt the user to select an organization before creating an invoice. 
+24.​
+Error should display "error": "Payment receiving details are incomplete. 
+Add a valid payment method in Billing before sending invoice emails." 
+instead of 
+Swap the positions of the invoices section and receiving details section to 
+
+--- PAGE 9 ---
+
+reduce the chance of errors and improve usability.
+ 
+25.​
+The receiving details section should support adding and saving multiple 
+payment methods simultaneously; currently only one method is stored and 
+adding a second replaces the first instead of keeping both. 
+26.​
+When navigating back to the invoice section, the previously saved 
+method gets deleted, resulting in invoice sending errors. 
+27.​
+Change text color on hover 
+ 
+
+--- PAGE 10 ---
+
+ 
+28.​
+During team member onboarding, the plan selection step should be 
+removed; instead, the onboarding flow should be simplified like the client 
+flow, allowing only password setup and proceeding without showing plan 
+options. 
+29.​
+When a team member accepts an invitation and completes onboarding, 
+no notification is sent to the admin and it does not appear in the dashboard 
+notification panel. 

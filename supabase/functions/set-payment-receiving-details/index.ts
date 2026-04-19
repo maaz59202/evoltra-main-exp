@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { decryptJsonValue, encryptJsonValue } from "../_shared/payment-encryption.ts";
-import { parsePaymentReceivingDetails, toMaskedLegacyColumns } from "../_shared/payment-receiving.ts";
+import { parsePaymentReceivingDetailsCollection, toMaskedLegacyColumns } from "../_shared/payment-receiving.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,10 +53,7 @@ serve(async (req) => {
     const body = await req.json().catch(() => null);
     const action = body?.action === "delete" ? "delete" : "save";
     const organizationId = typeof body?.organizationId === "string" ? body.organizationId : null;
-    const paymentReceivingDetails =
-      body && typeof body.paymentReceivingDetails === "object" && !Array.isArray(body.paymentReceivingDetails)
-        ? body.paymentReceivingDetails
-        : null;
+    const paymentReceivingDetails = body?.paymentReceivingDetails ?? null;
     const paymentLink =
       typeof body?.paymentLink === "string" && body.paymentLink.trim().length > 0 ? body.paymentLink : null;
 
@@ -90,12 +87,14 @@ serve(async (req) => {
         payment_link: null,
       };
     } else {
-      const parsedPaymentReceivingDetails = parsePaymentReceivingDetails(paymentReceivingDetails);
-      if (!parsedPaymentReceivingDetails) {
+      const parsedPaymentReceivingDetails = parsePaymentReceivingDetailsCollection(paymentReceivingDetails);
+      if (!parsedPaymentReceivingDetails.length) {
         return json({ error: "Missing required payment receiving detail fields" }, 400);
       }
 
-      const encryptedPaymentReceivingDetails = await encryptJsonValue(parsedPaymentReceivingDetails);
+      const encryptedPaymentReceivingDetails = await encryptJsonValue({
+        methods: parsedPaymentReceivingDetails,
+      });
       const maskedLegacyColumns = toMaskedLegacyColumns(parsedPaymentReceivingDetails);
 
       updatePayload = {

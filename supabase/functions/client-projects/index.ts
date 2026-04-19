@@ -98,7 +98,11 @@ serve(async (req) => {
             id,
             name,
             status,
-            created_at
+            created_at,
+            organizations (
+              id,
+              name
+            )
           )
         `)
         .in("client_user_id", accessibleClientIds)
@@ -124,6 +128,9 @@ serve(async (req) => {
 
             return {
               ...project,
+              organization: Array.isArray(project.organizations)
+                ? project.organizations[0] ?? null
+                : project.organizations ?? null,
               progress: buildProjectProgress(tasks || []),
               invoiceCount: invoiceCount || 0,
             };
@@ -161,7 +168,20 @@ serve(async (req) => {
     }
 
     const [{ data: project }, { data: tasks }, { count: invoiceCount }] = await Promise.all([
-      supabase.from("projects").select("id, name, status, created_at").eq("id", projectId).maybeSingle(),
+      supabase
+        .from("projects")
+        .select(`
+          id,
+          name,
+          status,
+          created_at,
+          organizations (
+            id,
+            name
+          )
+        `)
+        .eq("id", projectId)
+        .maybeSingle(),
       supabase
         .from("tasks")
         .select("id, title, status, priority, updated_at")
@@ -189,6 +209,9 @@ serve(async (req) => {
         success: true,
         project: {
           ...project,
+          organization: Array.isArray(project.organizations)
+            ? project.organizations[0] ?? null
+            : project.organizations ?? null,
           progress: buildProjectProgress(tasks || []),
           recentTasks: tasks || [],
           invoiceCount: invoiceCount || 0,

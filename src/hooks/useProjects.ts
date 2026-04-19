@@ -4,12 +4,31 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getStoredOrganizationId, setStoredOrganizationId } from '@/lib/workspace';
 import type { Json } from '@/integrations/supabase/types';
 
+export interface ProjectMilestone {
+  id: string;
+  title: string;
+  completed: boolean;
+}
+
+export interface ProjectResourceLink {
+  id: string;
+  label: string;
+  url: string;
+}
+
 export interface Project {
   id: string;
   name: string;
   organization_id: string | null;
   status: string | null;
   created_at: string | null;
+  description: string | null;
+  due_date: string | null;
+  priority: 'low' | 'medium' | 'high' | null;
+  assigned_user_id: string | null;
+  milestones: ProjectMilestone[];
+  resources: ProjectResourceLink[];
+  clientCount?: number;
 }
 
 export interface Organization {
@@ -28,8 +47,12 @@ export const useProjects = () => {
   const { user, profile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [selectedOrgId, setSelectedOrgIdState] = useState<string | null>(() => getStoredOrganizationId());
+  const [selectedOrgId, setSelectedOrgIdState] = useState<string | null>(() => {
+    const val = getStoredOrganizationId();
+    return val === 'all' ? null : val;
+  });
   const [loading, setLoading] = useState(true);
+  const [organizationsLoaded, setOrganizationsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchOrganizations = useCallback(async () => {
@@ -37,8 +60,11 @@ export const useProjects = () => {
       setOrganizations([]);
       setSelectedOrgIdState(null);
       setStoredOrganizationId(null);
+      setOrganizationsLoaded(true);
       return;
     }
+
+    setOrganizationsLoaded(false);
 
     const { data, error } = await supabase
       .from('organization_members')
@@ -60,6 +86,7 @@ export const useProjects = () => {
 
     if (error) {
       console.error('Error fetching organizations:', error);
+      setOrganizationsLoaded(true);
       return;
     }
 
@@ -87,24 +114,42 @@ export const useProjects = () => {
     if (nextOrganizations.length === 0) {
       setSelectedOrgIdState(null);
       setStoredOrganizationId(null);
+      setOrganizationsLoaded(true);
       return;
     }
 
     setSelectedOrgIdState((currentOrgId) => {
-      const targetOrgId = currentOrgId || getStoredOrganizationId();
-      const organizationExists = targetOrgId
-        ? nextOrganizations.some((org) => org.id === targetOrgId)
-        : false;
+      const storedOrgId = getStoredOrganizationId();
 
-      const resolvedOrgId = organizationExists ? targetOrgId : nextOrganizations[0].id;
-      setStoredOrganizationId(resolvedOrgId);
+      let effectiveTarget: string | null = null;
+      if (currentOrgId !== null) {
+        effectiveTarget = currentOrgId;
+      } else if (storedOrgId === 'all') {
+        effectiveTarget = 'all';
+      } else if (storedOrgId) {
+        effectiveTarget = storedOrgId;
+      } else {
+        effectiveTarget = null;
+      }
+
+      let resolvedOrgId: string | null = null;
+      if (effectiveTarget === 'all') {
+        resolvedOrgId = null;
+      } else if (effectiveTarget && nextOrganizations.some((org) => org.id === effectiveTarget)) {
+        resolvedOrgId = effectiveTarget;
+      } else if (nextOrganizations.length > 0) {
+        resolvedOrgId = nextOrganizations[0].id;
+      }
+
+      setStoredOrganizationId(resolvedOrgId === null ? 'all' : resolvedOrgId);
       return resolvedOrgId;
     });
-  }, [user]);
+    setOrganizationsLoaded(true);
+  }, [user?.id]);
 
   const setSelectedOrgId = useCallback((organizationId: string | null) => {
     setSelectedOrgIdState(organizationId);
-    setStoredOrganizationId(organizationId);
+    setStoredOrganizationId(organizationId === null ? 'all' : organizationId);
   }, []);
 
   const fetchProjects = useCallback(async () => {
@@ -135,14 +180,52 @@ export const useProjects = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setProjects(data || []);
+      const fetchedProjects = data || [];
+
+      if (fetchedProjects.length === 0) {
+        setProjects([]);
+        return;
+      }
+
+      const projectIds = fetchedProjects.map((project) => project.id);
+      const { data: projectClientsData, error: projectClientsError } = await supabase
+        .from('project_clients')
+        .select('project_id')
+        .in('project_id', projectIds);
+
+      if (projectClientsError) throw projectClientsError;
+
+      const clientCounts = new Map<string, number>();
+      (projectClientsData || []).forEach((projectClient) => {
+        clientCounts.set(
+          projectClient.project_id,
+          (clientCounts.get(projectClient.project_id) || 0) + 1,
+        );
+      });
+
+      setProjects(
+        fetchedProjects.map((project) => ({
+          ...project,
+          description: (project as any).description ?? null,
+          due_date: (project as any).due_date ?? null,
+          priority: ((project as any).priority as Project['priority']) ?? null,
+          assigned_user_id: (project as any).assigned_user_id ?? null,
+          milestones: Array.isArray((project as any).milestones)
+            ? ((project as any).milestones as ProjectMilestone[])
+            : [],
+          resources: Array.isArray((project as any).resources)
+            ? ((project as any).resources as ProjectResourceLink[])
+            : [],
+          clientCount: clientCounts.get(project.id) || 0,
+        })),
+      );
     } catch (err) {
       console.error('Error fetching projects:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch projects');
     } finally {
       setLoading(false);
     }
-  }, [user, selectedOrgId, organizations]);
+  }, [user?.id, selectedOrgId, organizations]);
 
   const createProject = async (name: string, organizationId: string) => {
     if (!user) throw new Error('You must be logged in');
@@ -153,6 +236,9 @@ export const useProjects = () => {
         name,
         organization_id: organizationId,
         status: 'active',
+        assigned_user_id: null,
+        milestones: [],
+        resources: [],
       })
       .select()
       .single();
@@ -163,7 +249,15 @@ export const useProjects = () => {
     return data;
   };
 
-  const updateProject = async (id: string, updates: Partial<Pick<Project, 'name' | 'status'>>) => {
+  const updateProject = async (
+    id: string,
+    updates: Partial<
+      Pick<
+        Project,
+        'name' | 'status' | 'description' | 'due_date' | 'priority' | 'assigned_user_id' | 'milestones' | 'resources'
+      >
+    >,
+  ) => {
     if (!user) throw new Error('You must be logged in');
     const existingProject = projects.find((project) => project.id === id);
 
@@ -182,6 +276,24 @@ export const useProjects = () => {
     }
     if (updates.status && updates.status !== existingProject?.status) {
       changedFields.push(`marked ${updates.status}`);
+    }
+    if (typeof updates.description !== 'undefined' && updates.description !== existingProject?.description) {
+      changedFields.push('updated the description');
+    }
+    if (typeof updates.due_date !== 'undefined' && updates.due_date !== existingProject?.due_date) {
+      changedFields.push('changed the due date');
+    }
+    if (typeof updates.priority !== 'undefined' && updates.priority !== existingProject?.priority) {
+      changedFields.push(`set priority to ${updates.priority ?? 'none'}`);
+    }
+    if (typeof updates.milestones !== 'undefined') {
+      changedFields.push('updated milestones');
+    }
+    if (typeof updates.assigned_user_id !== 'undefined' && updates.assigned_user_id !== existingProject?.assigned_user_id) {
+      changedFields.push('changed the assignee');
+    }
+    if (typeof updates.resources !== 'undefined') {
+      changedFields.push('updated resources');
     }
 
     const {
@@ -288,7 +400,7 @@ export const useProjects = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, fetchOrganizations, fetchProjects]);
+  }, [user?.id, fetchOrganizations, fetchProjects]);
 
   const refetch = useCallback(async () => {
     await fetchOrganizations();
@@ -301,6 +413,7 @@ export const useProjects = () => {
     selectedOrgId,
     setSelectedOrgId,
     loading,
+    organizationsLoaded,
     error,
     createProject,
     updateProject,

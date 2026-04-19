@@ -1,6 +1,7 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { MessageSquareText, Send, Sparkles, Trash2, Loader2 } from 'lucide-react';
+import { MessageSquareText, Send, Sparkles, Trash2,  } from '@/components/ui/icons';
 import { toast } from 'sonner';
 
 import { useProjectMessages } from '@/hooks/useProjectMessages';
@@ -109,7 +110,7 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
 
   return (
     <div className="flex h-[640px] flex-col overflow-hidden">
-      <div className="border-b border-border/60 bg-card/40 px-6 py-5">
+      <div className="border-b border-border/60 bg-background/70 px-6 py-5 dark:bg-card/40">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -125,10 +126,10 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="rounded-full border-border/70 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+            <Badge variant="outline" className="rounded-full border-border/70 bg-background/70 px-3 py-1 text-xs text-muted-foreground dark:bg-background/40">
               {conversationMeta.clientCount || 0} client{conversationMeta.clientCount === 1 ? '' : 's'}
             </Badge>
-            <Badge variant="outline" className="rounded-full border-border/70 bg-background/40 px-3 py-1 text-xs text-muted-foreground">
+            <Badge variant="outline" className="rounded-full border-border/70 bg-background/70 px-3 py-1 text-xs text-muted-foreground dark:bg-background/40">
               {conversationMeta.teamCount || 0} team member{conversationMeta.teamCount === 1 ? '' : 's'}
             </Badge>
             <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/8 px-3 py-1 text-xs text-primary">
@@ -139,7 +140,7 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
         </div>
       </div>
 
-      <ScrollArea className="flex-1 bg-[linear-gradient(180deg,rgba(15,23,42,0.25)_0%,rgba(15,23,42,0)_20%)]">
+      <ScrollArea className="flex-1 bg-muted/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.25)_0%,rgba(15,23,42,0)_20%)]">
         {messages.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center px-6 py-16 text-center">
             <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-primary/20 bg-primary/10 text-primary">
@@ -177,7 +178,7 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${
                           isClient
-                            ? 'bg-secondary/70 text-secondary-foreground'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-secondary/70 dark:text-secondary-foreground'
                             : 'bg-primary/12 text-primary'
                         }`}
                       >
@@ -199,8 +200,8 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
                         isOwn
                           ? 'border-primary/25 bg-[linear-gradient(135deg,rgba(124,92,255,0.95),rgba(95,74,215,0.98))] text-primary-foreground'
                           : isClient
-                            ? 'border-border/70 bg-secondary/35 text-foreground'
-                            : 'border-border/70 bg-card/85 text-foreground'
+                              ? 'border-amber-200/80 bg-amber-50/90 text-amber-950 dark:border-border/70 dark:bg-secondary/35 dark:text-foreground'
+                              : 'border-slate-200/80 bg-white text-slate-900 dark:border-border/70 dark:bg-card/85 dark:text-foreground'
                       }`}
                     >
                       <p className="whitespace-pre-wrap break-words text-[15px] leading-7">{msg.message}</p>
@@ -226,7 +227,7 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
         )}
       </ScrollArea>
 
-      <div className="border-t border-border/60 bg-card/40 px-6 py-5">
+      <div className="border-t border-border/60 bg-background/70 px-6 py-5 dark:bg-card/40">
         <form onSubmit={handleSend} className="flex items-end gap-3">
           <div className="flex-1 space-y-2">
             <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
@@ -246,7 +247,7 @@ const ProjectMessages = ({ projectId, clientCount }: ProjectMessagesProps) => {
             className="h-14 rounded-2xl px-5 gradient-primary text-white"
           >
             {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Spinner className="h-4 w-4" />
             ) : (
               <>
                 <Send className="mr-2 h-4 w-4" />

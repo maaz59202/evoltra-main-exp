@@ -1,10 +1,11 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, CheckCircle2, XCircle, UserPlus, LogIn } from 'lucide-react';
+import {  CheckCircle2, XCircle, UserPlus, LogIn } from '@/components/ui/icons';
 import { toast } from 'sonner';
 import { setStoredOrganizationId } from '@/lib/workspace';
 import { clearPendingInvite, setPendingInvite } from '@/lib/pendingInvite';
@@ -51,6 +52,48 @@ const AcceptInvite = () => {
 
     if (updateError) {
       throw updateError;
+    }
+  };
+
+  const notifyWorkspaceManagers = async (inviteData: InviteData, acceptedUser: NonNullable<typeof user>) => {
+    try {
+      const { data: managerRows, error: managerError } = await supabase
+        .from('organization_members')
+        .select('user_id, role')
+        .eq('organization_id', inviteData.organization_id)
+        .in('role', ['owner', 'admin'])
+        .neq('user_id', acceptedUser.id);
+
+      if (managerError) {
+        throw managerError;
+      }
+
+      const recipientIds = (managerRows || []).map((row) => row.user_id).filter(Boolean);
+      if (recipientIds.length === 0) return;
+
+      const displayName =
+        (acceptedUser.user_metadata?.full_name as string | undefined) ||
+        acceptedUser.email ||
+        'A team member';
+
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert(
+          recipientIds.map((recipientId) => ({
+            user_id: recipientId,
+            type: 'team_activity',
+            title: `${displayName} joined the workspace`,
+            message: `${inviteData.email} accepted the ${inviteData.role} invite for ${inviteData.organization?.name || 'the workspace'}.`,
+            project_id: null,
+            read: false,
+          })),
+        );
+
+      if (notificationError) {
+        throw notificationError;
+      }
+    } catch (err) {
+      console.warn('Failed to notify workspace managers about accepted invite:', err);
     }
   };
 
@@ -186,6 +229,7 @@ const AcceptInvite = () => {
       // Mark invite as accepted
       await markInviteAccepted(invite.id);
       await completeInviteeProfileSetup(user.id);
+      await notifyWorkspaceManagers(invite, user);
 
       clearPendingInvite();
       setStoredOrganizationId(invite.organization_id);
@@ -202,7 +246,7 @@ const AcceptInvite = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Spinner className="w-8 h-8 text-primary" />
       </div>
     );
   }
@@ -257,7 +301,7 @@ const AcceptInvite = () => {
               >
                 {accepting ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Spinner className="w-4 h-4 mr-2" />
                     Joining...
                   </>
                 ) : (

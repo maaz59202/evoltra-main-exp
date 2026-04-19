@@ -8,7 +8,7 @@ import {
   Receipt,
   UserCircle,
   Settings,
-} from 'lucide-react';
+} from '@/components/ui/icons';
 import { NavLink } from '@/components/NavLink';
 import { cn } from '@/lib/utils';
 import { useOrganizationPermissions } from '@/hooks/useOrganizationPermissions';
@@ -51,9 +51,9 @@ export function AppSidebar() {
   });
 
   return (
-    <Sidebar collapsible="icon" className="app-sidebar border-r border-border">
-      <SidebarContent className="pt-2">
-        <SidebarMenu className="px-2">
+    <Sidebar collapsible="icon" className="app-sidebar border-r border-border/70 bg-background/95">
+      <SidebarContent className="pt-3">
+        <SidebarMenu className="px-2.5">
           {visibleItems.map((item) => (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton
@@ -61,19 +61,19 @@ export function AppSidebar() {
                 isActive={isActive(item.url)}
                 tooltip={item.title}
                 className={cn(
-                  'h-10 rounded-xl transition-colors',
-                  collapsed ? 'mx-auto !size-10 !justify-center !p-0' : 'w-full',
+                  'h-9 rounded-lg text-[13px] transition-colors',
+                  collapsed ? 'mx-auto !size-9 !justify-center !p-0' : 'w-full',
                 )}
               >
                 <NavLink
                   to={item.url}
                   className={cn(
-                    'flex items-center rounded-xl transition-colors',
-                    collapsed ? 'h-10 w-10 justify-center p-0' : 'w-full gap-3 px-3 py-2',
+                    'flex items-center rounded-lg text-[13px] text-muted-foreground transition-colors hover:text-foreground dark:text-white/88 dark:hover:text-white',
+                    collapsed ? 'h-9 w-9 justify-center p-0' : 'w-full gap-2.5 px-2.5 py-2',
                   )}
-                  activeClassName="bg-primary/10 text-primary font-medium"
+                  activeClassName="bg-accent text-foreground dark:bg-white/10 dark:text-white font-medium"
                 >
-                  <item.icon className="h-5 w-5 shrink-0" />
+                  <item.icon className="h-4.5 w-4.5 shrink-0 text-current" />
                   {!collapsed && <span>{item.title}</span>}
                 </NavLink>
               </SidebarMenuButton>

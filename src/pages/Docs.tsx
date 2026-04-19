@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/accordion';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import { Search, BookOpen, Zap, Users, Layers, CreditCard, Settings, MessageSquare } from 'lucide-react';
+import { Search, BookOpen, Zap, Users, Layers, CreditCard, Settings, MessageSquare } from '@/components/ui/icons';
 import { PLAN_DEFINITIONS, TEAM_ROLES } from '@/data/productCopy';
 
 const Docs = () => {

@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { formatDistanceToNow } from 'date-fns';
 import {
   ArrowLeft,
@@ -5,14 +6,14 @@ import {
   ExternalLink,
   Eye,
   Globe,
-  Loader2,
+  
   Monitor,
   Save,
   Smartphone,
   Tablet,
   Wand2,
   X,
-} from 'lucide-react';
+} from '@/components/ui/icons';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -78,7 +79,7 @@ export const FunnelEditorToolbar = ({
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 {isSaving ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <Spinner className="h-3.5 w-3.5" />
                     <span>{saveLabel}</span>
                   </>
                 ) : isDirty ? (

@@ -1,15 +1,16 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { ArrowLeft, CalendarDays, ExternalLink, FileText } from 'lucide-react';
+import { ArrowLeft, CalendarDays, ExternalLink, FileText } from '@/components/ui/icons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import InvoiceStatusBadge from '@/components/billing/InvoiceStatusBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrencyAmount, getCurrencyConfig, type SupportedCurrencyCode } from '@/lib/currency';
-import { getPaymentReceivingRows, parsePaymentReceivingDetails } from '@/lib/payment-receiving';
+import { getPaymentReceivingSections, parsePaymentReceivingDetailsCollection } from '@/lib/payment-receiving';
 
 type InvoiceDetailsRecord = {
   id: string;
@@ -160,14 +161,14 @@ const InvoiceDetails = () => {
     return Number(data.total) - Number(data.subtotal);
   }, [data]);
 
-  const paymentReceivingDetails = useMemo(
-    () => parsePaymentReceivingDetails(data?.organization),
+  const paymentReceivingMethods = useMemo(
+    () => parsePaymentReceivingDetailsCollection(data?.organization),
     [data?.organization],
   );
 
-  const paymentReceivingRows = useMemo(
-    () => (paymentReceivingDetails ? getPaymentReceivingRows(paymentReceivingDetails) : []),
-    [paymentReceivingDetails],
+  const paymentReceivingSections = useMemo(
+    () => getPaymentReceivingSections(paymentReceivingMethods),
+    [paymentReceivingMethods],
   );
 
   const currencyLabel = useMemo(() => getCurrencyConfig(data?.currency).label, [data?.currency]);
@@ -175,7 +176,7 @@ const InvoiceDetails = () => {
   if (isLoading) {
     return (
       <div className="flex h-full min-h-[360px] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -339,14 +340,21 @@ const InvoiceDetails = () => {
             </div>
           )}
 
-          {paymentReceivingDetails && (
+          {paymentReceivingMethods.length > 0 && (
             <div className="invoice-panel rounded-[24px] border border-border/70 bg-background/30 p-5">
               <p className="mb-4 text-sm uppercase tracking-[0.18em] text-muted-foreground">Payment Receiving Details</p>
-              <div className="space-y-3 text-sm">
-                {paymentReceivingRows.map((row) => (
-                  <div key={row.label} className="flex items-center justify-between gap-4">
-                    <span className="text-muted-foreground">{row.label}</span>
-                    <span>{row.value}</span>
+              <div className="space-y-5 text-sm">
+                {paymentReceivingSections.map((section) => (
+                  <div key={section.key} className="space-y-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {section.title}
+                    </p>
+                    {section.rows.map((row) => (
+                      <div key={`${section.key}-${row.label}`} className="flex items-center justify-between gap-4">
+                        <span className="text-muted-foreground">{row.label}</span>
+                        <span>{row.value}</span>
+                      </div>
+                    ))}
                   </div>
                 ))}
                 {data.organization?.payment_link && (
@@ -366,7 +374,7 @@ const InvoiceDetails = () => {
             </div>
           )}
 
-          {!paymentReceivingDetails && (
+          {paymentReceivingMethods.length === 0 && (
             <div className="invoice-panel rounded-[24px] border border-amber-500/40 bg-amber-500/10 p-5">
               <p className="mb-2 text-sm uppercase tracking-[0.18em] text-amber-200">Payment Receiving Details Incomplete</p>
               <p className="text-sm text-amber-100/90">

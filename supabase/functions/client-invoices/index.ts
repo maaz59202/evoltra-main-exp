@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 import { decryptJsonValue } from "../_shared/payment-encryption.ts";
-import { parsePaymentReceivingDetails } from "../_shared/payment-receiving.ts";
+import { parsePaymentReceivingDetailsCollection } from "../_shared/payment-receiving.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -208,7 +208,7 @@ serve(async (req) => {
     }
 
     const decryptedPaymentDetails = await decryptJsonValue(organization?.payment_receiving_details);
-    const paymentReceivingDetails = parsePaymentReceivingDetails(decryptedPaymentDetails);
+    const paymentReceivingDetails = parsePaymentReceivingDetailsCollection(decryptedPaymentDetails);
 
     return new Response(
       JSON.stringify({

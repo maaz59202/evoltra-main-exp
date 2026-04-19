@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PLAN_DEFINITIONS } from '@/data/productCopy';
 import { getPendingInvite } from '@/lib/pendingInvite';
-import { Loader2, ArrowLeft, ArrowRight, User, Building, Target, Check } from 'lucide-react';
+import {  ArrowLeft, ArrowRight, User, Building, Target, Check } from '@/components/ui/icons';
 import { supabase } from '@/integrations/supabase/client';
 
 type Mode = 'solo' | 'team';
@@ -18,7 +19,7 @@ const goals = [
   'Build landing pages & funnels',
   'Track tasks & deadlines',
   'Collaborate with team members',
-  'Invoice clients',
+  'Invoices management',
   'Grow my freelance business'
 ];
 
@@ -317,7 +318,7 @@ const Onboarding = () => {
             >
               {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Spinner className="w-4 h-4 mr-2" />
                   Saving...
                 </>
               ) : step === totalSteps ? (

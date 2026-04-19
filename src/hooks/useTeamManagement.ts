@@ -139,7 +139,7 @@ export const useTeamManagement = (organizationId: string | null, organizationNam
     } finally {
       setLoading(false);
     }
-  }, [user, organizationId]);
+  }, [user?.id, organizationId]);
 
   const inviteMember = async (email: string, role: MemberRole = 'member') => {
     if (!user || !organizationId) throw new Error('Not authenticated');

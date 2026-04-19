@@ -1,4 +1,6 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -8,15 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import ProjectCard from '@/components/projects/ProjectCard';
 import CreateProjectDialog from '@/components/projects/CreateProjectDialog';
 import CreateOrganizationDialog from '@/components/organizations/CreateOrganizationDialog';
 import { useProjects } from '@/hooks/useProjects';
 import { ROLE_PERMISSIONS } from '@/data/productCopy';
-import { Plus, Search, FolderOpen, Loader2, Building2 } from 'lucide-react';
+import { Plus, Search, FolderOpen,  Building2, CheckCircle2, Archive, Trash2, Flag, CalendarDays, Target } from '@/components/ui/icons';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,8 +27,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from '@/components/ui/icons';
 
 const Projects = () => {
+  const navigate = useNavigate();
   const {
     projects,
     organizations,
@@ -47,6 +55,8 @@ const Projects = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showOrgDialog, setShowOrgDialog] = useState(false);
   const [showDeleteOrgDialog, setShowDeleteOrgDialog] = useState(false);
+  const [projectDialogAction, setProjectDialogAction] = useState<'complete' | 'archive' | 'delete' | null>(null);
+  const [projectActionTarget, setProjectActionTarget] = useState<(typeof projects)[number] | null>(null);
   const selectedOrganization = organizations.find((organization) => organization.id === selectedOrgId) || null;
   const selectedPermissions = selectedOrganization?.role ? ROLE_PERMISSIONS[selectedOrganization.role] : null;
   const organizationPermissions = new Map(
@@ -72,62 +82,94 @@ const Projects = () => {
     toast.success('Project created successfully');
   };
 
-  const handleUpdate = async (id: string, updates: Parameters<typeof updateProject>[1]) => {
-    await updateProject(id, updates);
-    toast.success('Project updated');
+  const openProjectActionDialog = (
+    action: 'complete' | 'archive' | 'delete',
+    project: (typeof projects)[number],
+  ) => {
+    setProjectDialogAction(action);
+    setProjectActionTarget(project);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteProject(id);
-    toast.success('Project deleted');
+  const handleProjectAction = async () => {
+    if (!projectActionTarget || !projectDialogAction) return;
+
+    try {
+      if (projectDialogAction === 'delete') {
+        await deleteProject(projectActionTarget.id);
+        toast.success('Project deleted');
+      } else {
+        const nextStatus = projectDialogAction === 'complete' ? 'completed' : 'archived';
+        await updateProject(projectActionTarget.id, { status: nextStatus });
+        toast.success(
+          projectDialogAction === 'complete' ? 'Project marked complete' : 'Project archived',
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update project';
+      toast.error(message);
+    } finally {
+      setProjectDialogAction(null);
+      setProjectActionTarget(null);
+    }
+  };
+
+  const statusTone: Record<string, string> = {
+    active: 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 dark:border-emerald-500/20',
+    completed: 'border-blue-200 bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/20',
+    archived: 'bg-muted text-muted-foreground border-border/60',
+    paused: 'border-amber-200 bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/20',
+  };
+  const priorityTone: Record<string, string> = {
+    low: 'text-sky-700 bg-sky-100 border-sky-200 dark:bg-sky-500/20 dark:text-sky-400 dark:border-sky-500/20',
+    medium: 'text-amber-700 bg-amber-100 border-amber-200 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/20',
+    high: 'text-rose-700 bg-rose-100 border-rose-200 dark:bg-rose-500/20 dark:text-rose-400 dark:border-rose-500/20',
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Projects</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage your projects and track progress
-          </p>
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary">{projects.length} total</Badge>
-            <Badge variant="outline">{filteredProjects.length} visible</Badge>
+    <div className="mx-auto w-full max-w-[1320px] space-y-6">
+      <div className="space-y-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">Workspace</div>
+            <h1 className="text-[2rem] font-semibold tracking-tight">Projects</h1>
+            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+              Track work across organizations.
+            </p>
           </div>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-          <Button variant="outline" onClick={() => setShowOrgDialog(true)} className="w-full md:w-auto">
-            <Building2 className="w-4 h-4 mr-2" />
-            New Organization
-          </Button>
-          <Button onClick={() => setShowCreateDialog(true)} className="gradient-primary text-white w-full md:w-auto" disabled={!canCreateProject}>
-            <Plus className="w-4 h-4 mr-2" />
+
+          <Button
+            onClick={() => setShowCreateDialog(true)}
+            className="h-9 rounded-lg px-4"
+            disabled={!canCreateProject}
+          >
+            <Plus className="mr-2 h-4 w-4" />
             New Project
           </Button>
         </div>
-      </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">{projects.length} total</Badge>
+          <Badge variant="outline">{filteredProjects.length} visible</Badge>
+        </div>
+
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search projects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="h-10 rounded-lg border-border/60 bg-background pl-9"
             />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               value={selectedOrgId || 'all'}
               onValueChange={(value) => setSelectedOrgId(value === 'all' ? null : value)}
             >
-              <SelectTrigger className="w-full sm:w-[240px]">
-                <Building2 className="w-4 h-4 mr-2" />
+              <SelectTrigger className="h-9 min-w-[220px] rounded-lg border-border/60 bg-background shadow-none sm:w-[232px]">
+                <Building2 className="mr-2 h-4 w-4" />
                 <SelectValue placeholder="All Organizations" />
               </SelectTrigger>
               <SelectContent>
@@ -139,22 +181,36 @@ const Projects = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="destructive"
-              className="w-full sm:w-auto"
-              onClick={() => setShowDeleteOrgDialog(true)}
-              disabled={!selectedOrgId || !canDeleteSelectedOrganization}
-            >
-              Delete Org
+
+            <Button variant="outline" onClick={() => setShowOrgDialog(true)} className="h-9 rounded-lg px-3.5">
+              <Building2 className="mr-2 h-4 w-4" />
+              New Organization
             </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" disabled={!selectedOrgId}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={!selectedOrgId || !canDeleteSelectedOrganization}
+                  onClick={() => setShowDeleteOrgDialog(true)}
+                >
+                  Delete organization
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-      </Card>
+      </div>
 
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Spinner className="w-8 h-8 text-primary" />
         </div>
       ) : error ? (
         <div className="text-center py-20">
@@ -186,25 +242,140 @@ const Projects = () => {
           ) : null}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            (() => {
+        <div className="overflow-hidden rounded-[22px] border border-border/50 bg-card/25">
+          <div className="grid grid-cols-[minmax(0,1.7fr)_110px_140px_120px_120px_130px_140px_72px] gap-4 border-b border-border/40 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+            <div>Name</div>
+            <div>Priority</div>
+            <div>Timeline</div>
+            <div>Milestones</div>
+            <div>Status</div>
+            <div>Created</div>
+            <div>Workspace</div>
+            <div className="text-right">Actions</div>
+          </div>
+
+          <div className="divide-y divide-border/30">
+            {filteredProjects.map((project) => {
               const projectPermissions = project.organization_id
                 ? organizationPermissions.get(project.organization_id)
                 : null;
+              const projectOrg = organizations.find((org) => org.id === project.organization_id);
+
+              const canManageProject = !!projectPermissions?.manageProjects;
 
               return (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onUpdate={handleUpdate}
-              onDelete={handleDelete}
-              canManage={!!projectPermissions?.manageProjects}
-              canManageClients={!!projectPermissions?.manageClients}
-            />
+                <div
+                  key={project.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => navigate(`/project/${project.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      navigate(`/project/${project.id}`);
+                    }
+                  }}
+                  className="grid w-full cursor-pointer grid-cols-[minmax(0,1.7fr)_110px_140px_120px_120px_130px_140px_72px] gap-4 px-5 py-4 text-left transition-colors hover:bg-accent/20"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-[15px] font-medium text-foreground">{project.name}</div>
+                    <div className="mt-1 truncate text-sm text-muted-foreground">
+                      {project.description || (projectPermissions?.manageClients ? 'Client access enabled' : 'Read-only visibility')}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center text-sm text-muted-foreground capitalize">
+                    {project.priority ? (
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${priorityTone[project.priority] || ''}`}>
+                        <Flag className="h-3 w-3" />
+                        {project.priority}
+                      </span>
+                    ) : (
+                      'Unset'
+                    )}
+                  </div>
+
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    {project.due_date ? (
+                      <span className="inline-flex items-center gap-2">
+                        <CalendarDays className="h-3.5 w-3.5" />
+                        {new Date(project.due_date).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      `Created ${project.created_at ? new Date(project.created_at).toLocaleDateString() : '-'}`
+                    )}
+                  </div>
+
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <span className="inline-flex items-center gap-2">
+                      <Target className="h-3.5 w-3.5" />
+                      {Array.isArray(project.milestones)
+                        ? `${project.milestones.filter((milestone) => milestone.completed).length}/${project.milestones.length}`
+                        : '0/0'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center">
+                    <Badge
+                      variant="outline"
+                      className={`rounded-full capitalize ${statusTone[project.status || 'active'] || statusTone.active}`}
+                    >
+                      {project.status || 'active'}
+                    </Badge>
+                  </div>
+
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    {project.created_at ? new Date(project.created_at).toLocaleDateString() : '-'}
+                  </div>
+
+                  <div className="flex items-center truncate text-sm text-muted-foreground">
+                    {projectOrg?.name || 'Workspace'}
+                  </div>
+
+                  <div className="flex items-center justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(event) => event.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+                        <DropdownMenuItem onClick={() => navigate(`/project/${project.id}`)}>
+                          Open project
+                        </DropdownMenuItem>
+                        {canManageProject && project.status !== 'completed' && (
+                          <DropdownMenuItem onClick={() => openProjectActionDialog('complete', project)}>
+                            <CheckCircle2 className="mr-2 h-4 w-4" />
+                            Mark complete
+                          </DropdownMenuItem>
+                        )}
+                        {canManageProject && project.status !== 'archived' && (
+                          <DropdownMenuItem onClick={() => openProjectActionDialog('archive', project)}>
+                            <Archive className="mr-2 h-4 w-4" />
+                            Archive
+                          </DropdownMenuItem>
+                        )}
+                        {canManageProject && (
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => openProjectActionDialog('delete', project)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
               );
-            })()
-          ))}
+            })}
+          </div>
         </div>
       )}
 
@@ -250,6 +421,52 @@ const Projects = () => {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!projectDialogAction && !!projectActionTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setProjectDialogAction(null);
+            setProjectActionTarget(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {projectDialogAction === 'delete'
+                ? 'Delete project'
+                : projectDialogAction === 'archive'
+                ? 'Archive project'
+                : 'Mark project complete'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {projectDialogAction === 'delete'
+                ? `Delete ${projectActionTarget?.name}? This permanently removes the project and its related data.`
+                : projectDialogAction === 'archive'
+                ? `Archive ${projectActionTarget?.name}? It will stay in the system but move out of active work.`
+                : `Mark ${projectActionTarget?.name} as complete? You can still access it later from the project list.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                projectDialogAction === 'delete'
+                  ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                  : undefined
+              }
+              onClick={handleProjectAction}
+            >
+              {projectDialogAction === 'delete'
+                ? 'Delete'
+                : projectDialogAction === 'archive'
+                ? 'Archive'
+                : 'Mark complete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

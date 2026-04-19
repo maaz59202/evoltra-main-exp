@@ -501,19 +501,49 @@ export const useFunnelEditor = (funnelId?: string) => {
     setIsDirty(true);
   }, []);
 
-  const togglePublish = useCallback(() => {
+  const togglePublish = useCallback(async () => {
+    if (!funnel) return;
+
+    const newStatus = funnel.status === 'draft' ? 'published' : 'draft';
+    const publishedUrl = newStatus === 'published' ? `/f/${funnel.id}` : undefined;
+    const updatedAt = new Date().toISOString();
+
     setFunnel((prev) => {
       if (!prev) return prev;
-      const newStatus = prev.status === 'draft' ? 'published' : 'draft';
       return {
         ...prev,
         status: newStatus,
-        publishedUrl: newStatus === 'published' ? `/f/${prev.id}` : undefined,
-        updatedAt: new Date().toISOString(),
+        publishedUrl,
+        updatedAt,
       };
     });
-    setIsDirty(true);
-  }, []);
+
+    setIsSaving(true);
+    try {
+      await updateFunnel({
+        id: funnel.id,
+        updates: {
+          status: newStatus,
+          publishedUrl,
+        },
+      });
+      setIsDirty(false);
+      setLastSavedAt(updatedAt);
+    } catch (error) {
+      console.error('Error updating funnel publish status:', error);
+      setFunnel((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          status: funnel.status,
+          publishedUrl: funnel.publishedUrl,
+          updatedAt: funnel.updatedAt,
+        };
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [funnel, updateFunnel]);
 
   useEffect(() => {
     if (isDirty && funnel) {

@@ -357,24 +357,42 @@ export type Database = {
       }
       projects: {
         Row: {
+          assigned_user_id: string | null
           created_at: string | null
+          description: string | null
+          due_date: string | null
           id: string
+          milestones: Json
           name: string
           organization_id: string | null
+          priority: string | null
+          resources: Json
           status: string | null
         }
         Insert: {
+          assigned_user_id?: string | null
           created_at?: string | null
+          description?: string | null
+          due_date?: string | null
           id?: string
+          milestones?: Json
           name: string
           organization_id?: string | null
+          priority?: string | null
+          resources?: Json
           status?: string | null
         }
         Update: {
+          assigned_user_id?: string | null
           created_at?: string | null
+          description?: string | null
+          due_date?: string | null
           id?: string
+          milestones?: Json
           name?: string
           organization_id?: string | null
+          priority?: string | null
+          resources?: Json
           status?: string | null
         }
         Relationships: [

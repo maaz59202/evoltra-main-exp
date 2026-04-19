@@ -1,4 +1,4 @@
-import { Widget, WidgetProps, TextWidgetProps, HeadingWidgetProps, ImageWidgetProps, ButtonWidgetProps, InputWidgetProps, FormWidgetProps, ContainerWidgetProps, SectionWidgetProps, SpacerWidgetProps } from '@/types/funnel';
+import { Widget, WidgetProps, TextWidgetProps, HeadingWidgetProps, ImageWidgetProps, ButtonWidgetProps, InputWidgetProps, FormWidgetProps, ColumnsWidgetProps, ContainerWidgetProps, SectionWidgetProps, SpacerWidgetProps } from '@/types/funnel';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,6 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { AlignLeft, AlignCenter, AlignRight } from '@/components/ui/icons';
 
 interface PropertiesPanelProps {
   widget: Widget | null;
@@ -26,6 +28,38 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
   const updateProp = (key: string, value: any) => {
     onUpdateProps(widget.id, { [key]: value });
   };
+
+  const AlignmentButtons = ({
+    value,
+    onChange,
+  }: {
+    value: 'left' | 'center' | 'right';
+    onChange: (value: 'left' | 'center' | 'right') => void;
+  }) => (
+    <div className="space-y-2">
+      <Label>Alignment</Label>
+      <ToggleGroup
+        type="single"
+        value={value}
+        onValueChange={(nextValue) => {
+          if (nextValue === 'left' || nextValue === 'center' || nextValue === 'right') {
+            onChange(nextValue);
+          }
+        }}
+        className="justify-start"
+      >
+        <ToggleGroupItem value="left" aria-label="Align left">
+          <AlignLeft className="h-4 w-4" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="center" aria-label="Align center">
+          <AlignCenter className="h-4 w-4" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="right" aria-label="Align right">
+          <AlignRight className="h-4 w-4" />
+        </ToggleGroupItem>
+      </ToggleGroup>
+    </div>
+  );
 
   const renderProperties = () => {
     switch (widget.type) {
@@ -74,19 +108,7 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 className="h-10 p-1"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Alignment</Label>
-              <Select value={props.alignment} onValueChange={(v) => updateProp('alignment', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Left</SelectItem>
-                  <SelectItem value="center">Center</SelectItem>
-                  <SelectItem value="right">Right</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
           </>
         );
       }
@@ -134,19 +156,7 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 className="h-10 p-1"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Alignment</Label>
-              <Select value={props.alignment} onValueChange={(v) => updateProp('alignment', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Left</SelectItem>
-                  <SelectItem value="center">Center</SelectItem>
-                  <SelectItem value="right">Right</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
           </>
         );
       }
@@ -220,19 +230,7 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 step={1}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Alignment</Label>
-              <Select value={props.alignment} onValueChange={(v) => updateProp('alignment', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="left">Left</SelectItem>
-                  <SelectItem value="center">Center</SelectItem>
-                  <SelectItem value="right">Right</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
           </>
         );
       }
@@ -287,6 +285,10 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 className="h-10 p-1"
               />
             </div>
+            <AlignmentButtons
+              value={props.alignment ?? 'left'}
+              onChange={(value) => updateProp('alignment', value)}
+            />
           </>
         );
       }
@@ -350,6 +352,96 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 value={props.successMessage}
                 onChange={(e) => updateProp('successMessage', e.target.value)}
                 rows={2}
+              />
+            </div>
+          </>
+        );
+      }
+
+      case 'columns': {
+        const props = widget.props as ColumnsWidgetProps;
+        return (
+          <>
+            <div className="space-y-2">
+              <Label>Columns</Label>
+              <Select value={String(props.columns)} onValueChange={(v) => updateProp('columns', Number(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">2 columns</SelectItem>
+                  <SelectItem value="3">3 columns</SelectItem>
+                  <SelectItem value="4">4 columns</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Gap ({props.gap}px)</Label>
+              <Slider
+                value={[props.gap]}
+                onValueChange={([v]) => updateProp('gap', v)}
+                min={8}
+                max={48}
+                step={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Inner Padding ({props.padding}px)</Label>
+              <Slider
+                value={[props.padding]}
+                onValueChange={([v]) => updateProp('padding', v)}
+                min={0}
+                max={48}
+                step={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Outer Margin ({props.margin}px)</Label>
+              <Slider
+                value={[props.margin]}
+                onValueChange={([v]) => updateProp('margin', v)}
+                min={0}
+                max={64}
+                step={4}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Background Color</Label>
+              <Input
+                type="color"
+                value={props.backgroundColor === 'transparent' ? '#ffffff' : props.backgroundColor}
+                onChange={(e) => updateProp('backgroundColor', e.target.value)}
+                className="h-10 p-1"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Border Radius ({props.borderRadius}px)</Label>
+              <Slider
+                value={[props.borderRadius]}
+                onValueChange={([v]) => updateProp('borderRadius', v)}
+                min={0}
+                max={32}
+                step={1}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Vertical Align</Label>
+              <Select value={props.verticalAlign} onValueChange={(v) => updateProp('verticalAlign', v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="start">Top</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="end">Bottom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Stack on Mobile</Label>
+              <Switch
+                checked={props.stackOnMobile}
+                onCheckedChange={(v) => updateProp('stackOnMobile', v)}
               />
             </div>
           </>

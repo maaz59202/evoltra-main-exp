@@ -20,7 +20,7 @@ const DEFAULT_PERMISSIONS = {
 };
 
 export const useOrganizationPermissions = (organizationId?: string | null) => {
-  const { organizations, selectedOrgId } = useProjects();
+  const { organizations, selectedOrgId, organizationsLoaded } = useProjects();
 
   const effectiveOrganizationId = organizationId ?? selectedOrgId ?? null;
 
@@ -36,5 +36,6 @@ export const useOrganizationPermissions = (organizationId?: string | null) => {
     organization: currentOrganization,
     role,
     permissions,
+    loading: !organizationsLoaded,
   };
 };

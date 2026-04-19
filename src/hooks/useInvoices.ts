@@ -144,8 +144,98 @@ export const useInvoices = (organizationId?: string) => {
     },
   });
 
+  const updateDraftInvoice = useMutation({
+    mutationFn: async ({ invoiceId, invoiceData }: { invoiceId: string; invoiceData: CreateInvoiceData }) => {
+      const sanitizedItems = invoiceData.items
+        .filter((item) => item.description.trim() && item.quantity > 0)
+        .map((item) => ({
+          description: item.description.trim(),
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.quantity * item.unit_price,
+        }));
+
+      if (sanitizedItems.length === 0) {
+        throw new Error('Add at least one valid invoice item before updating the draft.');
+      }
+
+      const { data: existingInvoice, error: existingInvoiceError } = await billingDb
+        .from('invoices')
+        .select('id, status')
+        .eq('id', invoiceId)
+        .single();
+
+      if (existingInvoiceError) throw existingInvoiceError;
+      if (existingInvoice?.status !== 'draft') {
+        throw new Error('Only draft invoices can be edited.');
+      }
+
+      const { error: invoiceUpdateError } = await billingDb
+        .from('invoices')
+        .update({
+          client_id: invoiceData.client_id ?? null,
+          project_id: invoiceData.project_id ?? null,
+          currency: invoiceData.currency ?? DEFAULT_CURRENCY,
+          subtotal: invoiceData.subtotal,
+          tax_rate: invoiceData.tax_rate,
+          total: invoiceData.total,
+          due_date: invoiceData.due_date ?? null,
+          notes: invoiceData.notes ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', invoiceId);
+
+      if (invoiceUpdateError) throw invoiceUpdateError;
+
+      const { error: deleteItemsError } = await billingDb
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', invoiceId);
+
+      if (deleteItemsError) throw deleteItemsError;
+
+      const { error: insertItemsError } = await billingDb
+        .from('invoice_items')
+        .insert(
+          sanitizedItems.map((item) => ({
+            invoice_id: invoiceId,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            amount: item.amount,
+          })),
+        );
+
+      if (insertItemsError) throw insertItemsError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast({
+        title: 'Draft updated',
+        description: 'The draft invoice has been updated.',
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Error updating draft',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const updateInvoiceStatus = useMutation({
-    mutationFn: async ({ invoiceId, status, paid_at }: { invoiceId: string; status: string; paid_at?: string }) => {
+    mutationFn: async ({
+      invoiceId,
+      status,
+      paid_at,
+      clearPaidAt,
+    }: {
+      invoiceId: string;
+      status: string;
+      paid_at?: string;
+      clearPaidAt?: boolean;
+    }) => {
       const updateData: Record<string, unknown> = { 
         status, 
         updated_at: new Date().toISOString() 
@@ -153,6 +243,10 @@ export const useInvoices = (organizationId?: string) => {
       
       if (paid_at) {
         updateData.paid_at = paid_at;
+      }
+
+      if (clearPaidAt) {
+        updateData.paid_at = null;
       }
 
       const { data, error } = await billingDb
@@ -258,7 +352,35 @@ export const useInvoices = (organizationId?: string) => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // FunctionsHttpError in Supabase sometimes puts the already-parsed JSON body in `error.context` or `error.context?.body`
+        const context = (error as any).context;
+        if (context) {
+          // If the payload itself was parsed
+          if (context.error && typeof context.error === 'string') {
+            throw new Error(context.error);
+          }
+          // If it was nested in a body field
+          if (context.body) {
+            try {
+              const parsedBody = typeof context.body === 'string' ? JSON.parse(context.body) : context.body;
+              if (parsedBody?.error) {
+                throw new Error(parsedBody.error);
+              }
+            } catch {
+              // ignore parse errors
+            }
+          }
+          // Fallback if it is actually a Response object that has not been consumed
+          if (typeof context.json === 'function') {
+            const payload = await context.clone().json().catch(() => null);
+            if (payload?.error && typeof payload.error === 'string') {
+              throw new Error(payload.error);
+            }
+          }
+        }
+        throw new Error(error.message || 'Failed to send invoice reminder');
+      }
       return data;
     },
     onSuccess: (_, variables) => {
@@ -296,6 +418,7 @@ export const useInvoices = (organizationId?: string) => {
     error,
     stats,
     createInvoice,
+    updateDraftInvoice,
     updateInvoiceStatus,
     deleteInvoice,
     sendInvoiceReminder,

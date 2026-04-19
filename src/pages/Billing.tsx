@@ -1,93 +1,115 @@
-import { useEffect, useState } from 'react';
+import { Spinner } from '@/components/ui/spinner';
+import { useEffect, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, CreditCard, Landmark } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { FileText, Landmark } from '@/components/ui/icons';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useProjects } from '@/hooks/useProjects';
 import InvoicesTab from '@/components/billing/InvoicesTab';
-import PaymentMethodsTab from '@/components/billing/PaymentMethodsTab';
 import PaymentReceivingDetailsTab from '@/components/billing/PaymentReceivingDetailsTab';
 
 const Billing = () => {
-  const { user } = useAuth();
-  const { organizations, selectedOrgId, refetch } = useProjects();
+  const { organizations, selectedOrgId, organizationsLoaded, refetch } = useProjects();
+  const billingOrganizations = useMemo(
+    () => organizations.filter((organization) => ['owner', 'admin'].includes(organization.role || '')),
+    [organizations],
+  );
   const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    if (!organizationsLoaded) return;
+
+    const selectedBillingOrg =
+      selectedOrgId && billingOrganizations.some((organization) => organization.id === selectedOrgId)
+        ? selectedOrgId
+        : null;
+
+    if (selectedBillingOrg) {
+      setOrganizationId(selectedBillingOrg);
+      return;
+    }
+
+    if (billingOrganizations.length === 1) {
+      setOrganizationId(billingOrganizations[0].id);
+      return;
+    }
+
+    setOrganizationId((current) =>
+      current && billingOrganizations.some((organization) => organization.id === current) ? current : null,
+    );
+  }, [billingOrganizations, organizationsLoaded, selectedOrgId]);
+
   const selectedOrganization =
-    organizations.find((organization) => organization.id === (selectedOrgId || organizationId)) || null;
+    billingOrganizations.find((organization) => organization.id === organizationId) || null;
   const canViewBilling = !!selectedOrganization?.role && ['owner', 'admin'].includes(selectedOrganization.role);
   const canManageBilling = !!selectedOrganization?.role && ['owner', 'admin'].includes(selectedOrganization.role);
 
-  useEffect(() => {
-    const fetchOrganization = async () => {
-      if (!user) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('organization_members')
-          .select('organization_id')
-          .eq('user_id', user.id)
-          .limit(1)
-          .maybeSingle();
-
-        if (error) throw error;
-        setOrganizationId(data?.organization_id || null);
-      } catch (error) {
-        console.error('Error fetching organization:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchOrganization();
-  }, [user]);
-
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Billing</h1>
-        <p className="mt-2 text-muted-foreground">
-          Manage invoices, payment methods, and clean payout instructions for your organization.
+    <div className="mx-auto w-full max-w-[1180px] space-y-5">
+      <div className="space-y-2">
+        <h1 className="text-[2rem] font-semibold tracking-tight">Billing</h1>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          Manage invoices and the receiving details clients should use when they pay you.
         </p>
       </div>
 
-      {isLoading ? (
+      {!organizationsLoaded ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent" />
         </div>
-      ) : !organizationId ? (
-        <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
-          <p>You need to be part of an organization to access billing.</p>
-        </div>
-      ) : !canViewBilling ? (
+      ) : billingOrganizations.length === 0 ? (
         <div className="flex h-64 flex-col items-center justify-center text-muted-foreground">
           <p>Billing is only available to workspace owners and admins.</p>
         </div>
+      ) : !organizationId ? (
+        <div className="space-y-5">
+          <div className="max-w-sm space-y-2">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Workspace</p>
+            <Select value={organizationId ?? undefined} onValueChange={setOrganizationId}>
+              <SelectTrigger className="h-10 rounded-lg border-border/60 bg-background">
+                <SelectValue placeholder="Select a workspace" />
+              </SelectTrigger>
+              <SelectContent>
+                {billingOrganizations.map((organization) => (
+                  <SelectItem key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground">
+            <p>Select a workspace before creating invoices or managing payment details.</p>
+          </div>
+        </div>
       ) : (
-        <div className="space-y-6">
-        <Tabs defaultValue="invoices" className="space-y-6">
-          <TabsList className="grid w-full max-w-xl grid-cols-3">
-            <TabsTrigger value="invoices" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Invoices
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              Payment Methods
-            </TabsTrigger>
+        <div className="space-y-5">
+        <div className="max-w-sm space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Workspace</p>
+          <Select value={organizationId} onValueChange={setOrganizationId}>
+            <SelectTrigger className="h-10 rounded-lg border-border/60 bg-background">
+              <SelectValue placeholder="Select a workspace" />
+            </SelectTrigger>
+            <SelectContent>
+              {billingOrganizations.map((organization) => (
+                <SelectItem key={organization.id} value={organization.id}>
+                  {organization.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Tabs defaultValue="receiving" className="space-y-5">
+          <TabsList className="grid h-10 w-full max-w-md grid-cols-2 rounded-lg border border-border/60 bg-background/40 p-1">
             <TabsTrigger value="receiving" className="gap-2">
               <Landmark className="h-4 w-4" />
               Receiving Details
             </TabsTrigger>
+            <TabsTrigger value="invoices" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Invoices
+            </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="invoices">
-            <InvoicesTab organizationId={organizationId} canManageBilling={canManageBilling} />
-          </TabsContent>
-
-          <TabsContent value="payments">
-            <PaymentMethodsTab />
-          </TabsContent>
 
           <TabsContent value="receiving">
             <PaymentReceivingDetailsTab
@@ -95,6 +117,10 @@ const Billing = () => {
               canManageBilling={canManageBilling}
               onSaved={refetch}
             />
+          </TabsContent>
+
+          <TabsContent value="invoices">
+            <InvoicesTab organizationId={organizationId} canManageBilling={canManageBilling} />
           </TabsContent>
         </Tabs>
         </div>

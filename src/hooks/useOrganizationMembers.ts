@@ -90,7 +90,7 @@ export const useOrganizationMembers = (organizationId: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [user, organizationId]);
+  }, [user?.id, organizationId]);
 
   useEffect(() => {
     fetchMembers();

@@ -103,7 +103,7 @@ export const useDashboardData = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchData();

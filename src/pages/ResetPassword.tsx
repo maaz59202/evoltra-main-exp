@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Check, Eye, EyeOff } from 'lucide-react';
+import {  ArrowLeft, Eye, EyeOff } from '@/components/ui/icons';
+import { usePasswordSecurity } from '@/hooks/usePasswordSecurity';
+import { PasswordSecurityPanel } from '@/components/auth/PasswordSecurityPanel';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -16,12 +19,7 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  const passwordRequirements = [
-    { text: 'At least 8 characters', met: password.length >= 8 },
-    { text: 'Contains a number', met: /\d/.test(password) },
-    { text: 'Contains uppercase letter', met: /[A-Z]/.test(password) },
-  ];
+  const passwordSecurity = usePasswordSecurity(password);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,8 +29,13 @@ const ResetPassword = () => {
       return;
     }
 
-    if (password.length < 8) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Password must be at least 8 characters' });
+    if (!passwordSecurity.isStrongEnough) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Use a stronger password that meets every requirement below.' });
+      return;
+    }
+
+    if (passwordSecurity.isCompromised) {
+      toast({ variant: 'destructive', title: 'Error', description: 'This password appears in breach data. Choose a different password.' });
       return;
     }
 
@@ -126,19 +129,16 @@ const ResetPassword = () => {
                   </button>
                 </div>
 
-                {password && (
-                  <ul className="mt-2 space-y-1">
-                    {passwordRequirements.map((req) => (
-                      <li
-                        key={req.text}
-                        className={`text-sm flex items-center gap-2 ${req.met ? 'text-success' : 'text-muted-foreground'}`}
-                      >
-                        <Check className={`w-3 h-3 ${req.met ? 'opacity-100' : 'opacity-30'}`} />
-                        {req.text}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <PasswordSecurityPanel
+                  password={password}
+                  requirements={passwordSecurity.requirements}
+                  strengthLabel={passwordSecurity.strengthLabel}
+                  strengthScore={passwordSecurity.strengthScore}
+                  isCompromised={passwordSecurity.isCompromised}
+                  breachCount={passwordSecurity.breachCount}
+                  checkingBreach={passwordSecurity.checkingBreach}
+                  breachLookupFailed={passwordSecurity.breachLookupFailed}
+                />
               </div>
 
               <div className="space-y-2">
@@ -161,7 +161,7 @@ const ResetPassword = () => {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Spinner className="w-4 h-4 mr-2" />
                     Resetting...
                   </>
                 ) : (

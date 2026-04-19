@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { Spinner } from '@/components/ui/spinner';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { FolderOpen, Loader2, LogOut, ReceiptText, TrendingUp, ArrowRight, CircleDot } from 'lucide-react';
+import { FolderOpen,  LogOut, ReceiptText, TrendingUp, ArrowRight, CircleDot, Bell, Palette, Building2, Moon, Sun } from '@/components/ui/icons';
 
 import { useClientAuth } from '@/contexts/ClientAuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,12 +10,36 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrencyAmount, type SupportedCurrencyCode } from '@/lib/currency';
+import {
+  CLIENT_PORTAL_PALETTES,
+  applyClientPortalTheme,
+  getClientPortalPaletteTheme,
+  getStoredClientPortalPalette,
+  getStoredClientPortalTheme,
+  setStoredClientPortalPalette,
+  setStoredClientPortalTheme,
+  type ClientPortalPaletteKey,
+  type ClientPortalTheme,
+} from '@/lib/client-portal-theme';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Project {
   id: string;
   name: string;
   status: string | null;
   created_at: string | null;
+  organization?: {
+    id: string;
+    name: string;
+  } | null;
   progress: {
     totalTasks: number;
     completedTasks: number;
@@ -40,12 +65,31 @@ interface ClientInvoice {
   } | null;
 }
 
+const getClientFacingInvoiceStatus = (status: ClientInvoice['status']) => {
+  if (status === 'paid') {
+    return { label: 'paid', classes: 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200' };
+  }
+
+  if (status === 'cancelled') {
+    return { label: 'cancelled', classes: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300' };
+  }
+
+  return { label: 'unpaid', classes: 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200' };
+};
+
 const ClientPortal = () => {
   const navigate = useNavigate();
   const { client, loading: authLoading, logout } = useClientAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [invoices, setInvoices] = useState<ClientInvoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [palette, setPalette] = useState<ClientPortalPaletteKey>(() => getStoredClientPortalPalette());
+  const [theme, setTheme] = useState<ClientPortalTheme>(() => getStoredClientPortalTheme());
+  const [readAlertIds, setReadAlertIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    applyClientPortalTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (!authLoading && !client) {
@@ -57,6 +101,17 @@ const ClientPortal = () => {
       void fetchPortalData();
     }
   }, [client, authLoading, navigate]);
+
+  useEffect(() => {
+    if (!client) return;
+
+    try {
+      const stored = window.localStorage.getItem(`evoltra_client_portal_alert_reads:${client.id}`);
+      setReadAlertIds(stored ? JSON.parse(stored) : []);
+    } catch {
+      setReadAlertIds([]);
+    }
+  }, [client]);
 
   const fetchPortalData = async () => {
     try {
@@ -94,6 +149,17 @@ const ClientPortal = () => {
     navigate('/client/login');
   };
 
+  const handlePaletteChange = (nextPalette: ClientPortalPaletteKey) => {
+    setPalette(nextPalette);
+    setStoredClientPortalPalette(nextPalette);
+  };
+
+  const handleThemeToggle = () => {
+    const nextTheme: ClientPortalTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    setStoredClientPortalTheme(nextTheme);
+  };
+
   const getProjectStatusColor = (status: string | null) => {
     switch (status) {
       case 'active':
@@ -110,32 +176,207 @@ const ClientPortal = () => {
   const totalTaskCount = projects.reduce((sum, project) => sum + project.progress.totalTasks, 0);
   const completedTaskCount = projects.reduce((sum, project) => sum + project.progress.completedTasks, 0);
   const activeInvoiceCount = invoices.filter((invoice) => invoice.status === 'sent' || invoice.status === 'overdue').length;
+  const portalAlerts = useMemo(() => {
+    const overdueInvoices = invoices
+      .filter((invoice) => invoice.status === 'overdue')
+      .map((invoice) => ({
+        id: `invoice-overdue-${invoice.id}`,
+        label: `${invoice.invoice_number} is overdue`,
+        detail: invoice.project?.name || 'Invoice payment is overdue',
+        onClick: () => navigate(`/client/invoice/${invoice.id}`),
+      }));
+
+    const unpaidInvoices = invoices
+      .filter((invoice) => invoice.status === 'sent')
+      .map((invoice) => ({
+        id: `invoice-unpaid-${invoice.id}`,
+        label: `${invoice.invoice_number} is unpaid`,
+        detail: invoice.due_date ? `Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}` : 'Awaiting payment',
+        onClick: () => navigate(`/client/invoice/${invoice.id}`),
+      }));
+
+    const activeProjects = projects
+      .filter((project) => project.progress.inProgressTasks > 0)
+      .map((project) => ({
+        id: `project-progress-${project.id}`,
+        label: `${project.name} has work in progress`,
+        detail: `${project.progress.inProgressTasks} task${project.progress.inProgressTasks === 1 ? '' : 's'} currently moving`,
+        onClick: () => navigate(`/client/project/${project.id}`),
+      }));
+
+    return [...overdueInvoices, ...unpaidInvoices, ...activeProjects].slice(0, 8);
+  }, [invoices, navigate, projects]);
+
+  useEffect(() => {
+    if (!client || loading) return;
+
+    const activeIds = new Set(portalAlerts.map((alert) => alert.id));
+    const nextReadAlertIds = readAlertIds.filter((id) => activeIds.has(id));
+
+    if (nextReadAlertIds.length !== readAlertIds.length) {
+      setReadAlertIds(nextReadAlertIds);
+      try {
+        window.localStorage.setItem(
+          `evoltra_client_portal_alert_reads:${client.id}`,
+          JSON.stringify(nextReadAlertIds),
+        );
+      } catch {
+        // Ignore storage issues.
+      }
+    }
+  }, [client, portalAlerts, readAlertIds, loading]);
+
+  const unreadAlerts = useMemo(
+    () => portalAlerts.filter((alert) => !readAlertIds.includes(alert.id)),
+    [portalAlerts, readAlertIds],
+  );
+
+  const markAlertAsRead = (alertId: string) => {
+    if (!client || readAlertIds.includes(alertId)) return;
+
+    const nextReadAlertIds = [...readAlertIds, alertId];
+    setReadAlertIds(nextReadAlertIds);
+
+    try {
+      window.localStorage.setItem(
+        `evoltra_client_portal_alert_reads:${client.id}`,
+        JSON.stringify(nextReadAlertIds),
+      );
+    } catch {
+      // Ignore storage issues.
+    }
+  };
+
+  const markAllAlertsAsRead = () => {
+    if (!client || portalAlerts.length === 0) return;
+
+    const nextReadAlertIds = portalAlerts.map(alert => alert.id);
+    setReadAlertIds(nextReadAlertIds);
+
+    try {
+      window.localStorage.setItem(
+        `evoltra_client_portal_alert_reads:${client.id}`,
+        JSON.stringify(nextReadAlertIds),
+      );
+    } catch {
+      // Ignore storage issues.
+    }
+  };
 
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Spinner className="h-8 w-8 text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={getClientPortalPaletteTheme(palette)}>
       <header className="border-b border-border/70 bg-card/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-purple-600 shadow-[0_12px_40px_-18px_rgba(124,58,237,0.9)]">
-              <span className="text-xl font-bold text-white">E</span>
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-2xl shadow-[0_12px_40px_-18px_rgba(0,0,0,0.32)]"
+              style={{ backgroundColor: 'var(--client-accent)' }}
+            >
+              <span className="text-xl font-bold" style={{ color: 'var(--client-accent-foreground)' }}>E</span>
             </div>
             <div>
               <p className="text-sm font-medium text-foreground">Client Portal</p>
               <p className="text-xs text-muted-foreground">{client?.email}</p>
             </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="rounded-full px-4">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="relative rounded-full">
+                  <Bell className="h-4 w-4" />
+                  {unreadAlerts.length > 0 && (
+                    <span
+                      className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-semibold"
+                      style={{ backgroundColor: 'var(--client-accent)', color: 'var(--client-accent-foreground)' }}
+                    >
+                      {unreadAlerts.length > 9 ? '9+' : unreadAlerts.length}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[22rem] max-w-[calc(100vw-1rem)]">
+                <div className="flex items-center justify-between px-3">
+                  <DropdownMenuLabel className="px-0">Alerts and updates</DropdownMenuLabel>
+                  {unreadAlerts.length > 0 && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="px-2 h-auto py-1 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markAllAlertsAsRead();
+                      }}
+                    >
+                      Mark all as read
+                    </Button>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                <ScrollArea className="max-h-72">
+                  {portalAlerts.length === 0 ? (
+                    <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+                      No alerts right now.
+                    </div>
+                  ) : (
+                    portalAlerts.map((alert) => (
+                      <DropdownMenuItem
+                        key={alert.id}
+                        className="flex cursor-pointer flex-col items-start gap-1 whitespace-normal px-3 py-3"
+                        onClick={() => {
+                          markAlertAsRead(alert.id);
+                          alert.onClick();
+                        }}
+                      >
+                        <span className="font-medium text-foreground">
+                          {!readAlertIds.includes(alert.id) ? '\u2022 ' : ''}
+                          {alert.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{alert.detail}</span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </ScrollArea>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Palette className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Portal palette</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {Object.entries(CLIENT_PORTAL_PALETTES).map(([key, value]) => (
+                  <DropdownMenuItem key={key} onClick={() => handlePaletteChange(key as ClientPortalPaletteKey)}>
+                    <span
+                      className="mr-2 inline-block h-3 w-3 rounded-full"
+                      style={{ backgroundColor: value.accent }}
+                    />
+                    {value.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={handleThemeToggle} aria-label="Toggle theme">
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="rounded-full px-4">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -157,7 +398,7 @@ const ClientPortal = () => {
                 value={`${completedTaskCount}/${totalTaskCount || 0}`}
                 icon={<TrendingUp className="h-4 w-4" />}
               />
-              <MetricCard label="Open invoices" value={activeInvoiceCount} icon={<ReceiptText className="h-4 w-4" />} />
+              <MetricCard label="Unpaid invoices" value={activeInvoiceCount} icon={<ReceiptText className="h-4 w-4" />} />
             </div>
           </div>
         </section>
@@ -195,11 +436,19 @@ const ClientPortal = () => {
                               <CircleDot className="h-3.5 w-3.5 text-primary" />
                               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Project</p>
                             </div>
-                            <div>
+                          <div>
                               <h3 className="text-xl font-semibold tracking-tight">{project.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                Created {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'recently'}
-                              </p>
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                {project.organization?.name && (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Building2 className="h-3.5 w-3.5" />
+                                    Organization: {project.organization.name}
+                                  </span>
+                                )}
+                                <span>
+                                  Created {project.created_at ? new Date(project.created_at).toLocaleDateString() : 'recently'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                           <Badge className={`${getProjectStatusColor(project.status)} rounded-full border px-3 py-1`}>
@@ -214,8 +463,11 @@ const ClientPortal = () => {
                           </div>
                           <div className="h-2 overflow-hidden rounded-full bg-muted/70">
                             <div
-                              className="h-full rounded-full bg-primary transition-all"
-                              style={{ width: `${project.progress.progressPercent}%` }}
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                backgroundColor: 'var(--client-accent)',
+                                width: `${project.progress.progressPercent}%`,
+                              }}
                             />
                           </div>
                         </div>
@@ -243,7 +495,7 @@ const ClientPortal = () => {
           <section className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold">Invoices</h2>
-              <p className="text-sm text-muted-foreground">Secure invoice access without pushing payment instructions into email.</p>
+              <p className="text-sm text-muted-foreground">Securely view your invoices and save them.</p>
             </div>
 
             <Card className="rounded-[28px] border-border/70 bg-card/55">
@@ -307,15 +559,8 @@ const MiniStat = ({ label, value }: { label: string; value: number }) => (
 );
 
 const InvoiceBadge = ({ status }: { status: ClientInvoice['status'] }) => {
-  const classes = {
-    draft: 'bg-muted text-muted-foreground',
-    sent: 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200',
-    paid: 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200',
-    overdue: 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200',
-    cancelled: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300',
-  }[status];
-
-  return <Badge className={`${classes} rounded-full px-2.5 py-1`}>{status}</Badge>;
+  const badge = getClientFacingInvoiceStatus(status);
+  return <Badge className={`${badge.classes} rounded-full px-2.5 py-1`}>{badge.label}</Badge>;
 };
 
 export default ClientPortal;

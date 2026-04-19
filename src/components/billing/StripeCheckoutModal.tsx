@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@/components/ui/icons';
 
 const stripePromise = loadStripe('pk_test_51SiygpA7qSPD94rSMywDo3R0ievzW1sVpaG1BnZZ4BnFMlHova8uETbtoCnQYil8dcMjQdU2dTOAcuuO36PEXxbI00fUZ0LQ2N');
 

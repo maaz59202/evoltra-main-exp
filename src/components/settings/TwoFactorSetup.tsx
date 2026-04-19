@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Smartphone, ShieldCheck, Loader2, Copy, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Smartphone, ShieldCheck,  Copy, CheckCircle2, AlertTriangle } from '@/components/ui/icons';
 
 type SetupStep = 'idle' | 'enrolling' | 'verifying' | 'enrolled';
 
@@ -175,7 +176,7 @@ const TwoFactorSetup = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <Spinner className="h-6 w-6 text-muted-foreground" />
         </CardContent>
       </Card>
     );
@@ -218,7 +219,7 @@ const TwoFactorSetup = () => {
           <Button onClick={handleStartEnroll} disabled={isLoading}>
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                <Spinner className="h-4 w-4 mr-2" />
                 Loading...
               </>
             ) : (
@@ -278,7 +279,7 @@ const TwoFactorSetup = () => {
                   <Button onClick={handleVerify} disabled={isVerifying || verifyCode.length !== 6}>
                     {isVerifying ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <Spinner className="h-4 w-4 mr-2" />
                         Verifying...
                       </>
                     ) : (
@@ -329,7 +330,7 @@ const TwoFactorSetup = () => {
                   <Button variant="destructive" onClick={handleUnenroll} disabled={isUnenrolling || disableCode.length !== 6}>
                     {isUnenrolling ? (
                       <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <Spinner className="h-4 w-4 mr-2" />
                         Disabling...
                       </>
                     ) : (

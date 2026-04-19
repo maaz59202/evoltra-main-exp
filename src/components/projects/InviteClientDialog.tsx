@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,7 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Loader2, UserPlus, Copy, Check, Link, Mail } from 'lucide-react';
+import {  UserPlus, Copy, Check, Link, Mail } from '@/components/ui/icons';
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
 interface InviteClientDialogProps {
@@ -253,7 +254,7 @@ const InviteClientDialog = ({
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner className="mr-2 h-4 w-4" />
                     Sending...
                   </>
                 ) : (
@@ -282,7 +283,7 @@ const InviteClientDialog = ({
               >
                 {linkOnlyLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner className="mr-2 h-4 w-4" />
                     Generating...
                   </>
                 ) : (

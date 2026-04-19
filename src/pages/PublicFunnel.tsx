@@ -1,10 +1,9 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Funnel, Widget, InputWidgetProps } from '@/types/funnel';
-import { FunnelCanvas } from '@/components/funnel/FunnelCanvas';
-import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Database row type
@@ -29,6 +28,22 @@ const rowToFunnel = (row: FunnelRow): Funnel => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const buildLeadPayload = (widgets: Widget[], rawFormData: Record<string, string>) => {
+  const counters = new Map<string, number>();
+
+  return widgets
+    .filter((widget): widget is Widget & { props: InputWidgetProps } => widget.type === 'input')
+    .reduce<Record<string, string>>((payload, widget, index) => {
+      const props = widget.props as InputWidgetProps;
+      const baseKey = props.label?.trim() || props.placeholder?.trim() || `Field ${index + 1}`;
+      const nextCount = (counters.get(baseKey) ?? 0) + 1;
+      counters.set(baseKey, nextCount);
+      const outputKey = nextCount === 1 ? baseKey : `${baseKey} (${nextCount})`;
+      payload[outputKey] = rawFormData[widget.id] || '';
+      return payload;
+    }, {});
+};
 
 const PublicFunnel = () => {
   const { funnelId } = useParams();
@@ -56,12 +71,14 @@ const PublicFunnel = () => {
 
   const submitLead = useMutation({
     mutationFn: async (data: Record<string, string>) => {
+      const normalizedLeadData = buildLeadPayload(funnel?.widgets || [], data);
+
       const { error } = await supabase
         .from('leads' as any)
         .insert({
           funnel_id: funnelId,
           organization_id: funnel?.workspaceId || null,
-          data,
+          data: normalizedLeadData,
           source_url: window.location.href,
         });
 
@@ -71,7 +88,7 @@ const PublicFunnel = () => {
       if (funnel?.workspaceId) {
         supabase.functions.invoke('notify-lead', {
           body: {
-            leadData: data,
+            leadData: normalizedLeadData,
             funnelId: funnelId,
             funnelName: funnel.name,
             organizationId: funnel.workspaceId,
@@ -122,7 +139,7 @@ const PublicFunnel = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Spinner className="w-8 h-8 text-primary" />
       </div>
     );
   }
@@ -231,20 +248,22 @@ const PublicFunnelRenderer = ({
 
       case 'button': {
         const props = widget.props as any;
+        const isExternalLink = /^https?:\/\//i.test(props.url || '');
         return (
-          <a
-            key={widget.id}
-            href={props.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-block px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
-            style={{
-              backgroundColor: props.backgroundColor,
-              color: props.textColor,
-            }}
-          >
-            {props.text}
-          </a>
+          <div key={widget.id} style={{ textAlign: props.alignment ?? 'left' }}>
+            <a
+              href={props.url}
+              target={isExternalLink ? '_blank' : undefined}
+              rel={isExternalLink ? 'noopener noreferrer' : undefined}
+              className="inline-block px-6 py-3 rounded-lg font-medium transition-opacity hover:opacity-90"
+              style={{
+                backgroundColor: props.backgroundColor,
+                color: props.textColor,
+              }}
+            >
+              {props.text}
+            </a>
+          </div>
         );
       }
 
@@ -282,8 +301,8 @@ const PublicFunnelRenderer = ({
               type={props.inputType}
               placeholder={props.placeholder}
               required={props.required}
-              value={formData[props.label] || ''}
-              onChange={(e) => setFormData({ ...formData, [props.label]: e.target.value })}
+              value={formData[widget.id] || ''}
+              onChange={(e) => setFormData({ ...formData, [widget.id]: e.target.value })}
               className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
@@ -306,7 +325,7 @@ const PublicFunnelRenderer = ({
 
         return (
           <section key={widget.id} style={bgStyle} className="w-full">
-            <div className="max-w-4xl mx-auto px-4 space-y-4">
+            <div className="mx-auto w-full max-w-5xl px-4 space-y-4">
               {childWidgets.map((child) => renderWidget(child))}
             </div>
           </section>
@@ -344,7 +363,7 @@ const PublicFunnelRenderer = ({
   const rootWidgets = getChildWidgets(null);
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-4">
+    <div className="mx-auto w-full space-y-4">
       {rootWidgets.map((widget) => renderWidget(widget))}
     </div>
   );

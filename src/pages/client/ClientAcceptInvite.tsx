@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useClientAuth } from '@/contexts/ClientAuthContext';
@@ -7,7 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff,  AlertCircle, CheckCircle } from '@/components/ui/icons';
+import { usePasswordSecurity } from '@/hooks/usePasswordSecurity';
+import { PasswordSecurityPanel } from '@/components/auth/PasswordSecurityPanel';
 
 const ClientAcceptInvite = () => {
   const { token } = useParams<{ token: string }>();
@@ -27,6 +30,7 @@ const ClientAcceptInvite = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const passwordSecurity = usePasswordSecurity(password);
 
   useEffect(() => {
     const validateToken = async () => {
@@ -60,8 +64,13 @@ const ClientAcceptInvite = () => {
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (password.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    if (!passwordSecurity.isStrongEnough) {
+      toast.error('Use a stronger password that meets every requirement below.');
+      return;
+    }
+
+    if (passwordSecurity.isCompromised) {
+      toast.error('This password appears in breach data. Choose a different password.');
       return;
     }
     
@@ -100,7 +109,7 @@ const ClientAcceptInvite = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Spinner className="h-8 w-8 text-primary" />
       </div>
     );
   }
@@ -191,6 +200,16 @@ const ClientAcceptInvite = () => {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <PasswordSecurityPanel
+                password={password}
+                requirements={passwordSecurity.requirements}
+                strengthLabel={passwordSecurity.strengthLabel}
+                strengthScore={passwordSecurity.strengthScore}
+                isCompromised={passwordSecurity.isCompromised}
+                breachCount={passwordSecurity.breachCount}
+                checkingBreach={passwordSecurity.checkingBreach}
+                breachLookupFailed={passwordSecurity.breachLookupFailed}
+              />
             </div>
 
             <div className="space-y-2">
@@ -208,7 +227,7 @@ const ClientAcceptInvite = () => {
             <Button type="submit" className="w-full" disabled={validating}>
               {validating ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Spinner className="mr-2 h-4 w-4" />
                   Setting up...
                 </>
               ) : (

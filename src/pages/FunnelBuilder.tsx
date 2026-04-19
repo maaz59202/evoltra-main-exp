@@ -1,7 +1,7 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { DndContext, DragEndEvent, pointerWithin } from '@dnd-kit/core';
-import { Loader2 } from 'lucide-react';
 
 import { WidgetLibrary } from '@/components/funnel/WidgetLibrary';
 import { FunnelCanvas } from '@/components/funnel/FunnelCanvas';
@@ -17,6 +17,7 @@ const FunnelBuilder = () => {
   const { funnelId } = useParams();
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
+  const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false);
 
   const {
     funnel,
@@ -41,10 +42,11 @@ const FunnelBuilder = () => {
     updateFunnelName,
     togglePublish,
   } = useFunnelEditor(funnelId);
-  const { permissions } = useOrganizationPermissions(funnel?.workspaceId);
+  const { permissions, loading: permissionsLoading } = useOrganizationPermissions(funnel?.workspaceId);
   const canManageFunnels = permissions.manageFunnels;
   const canViewFunnels = permissions.viewFunnels;
   const isReadOnly = !!funnel && canViewFunnels && !canManageFunnels;
+  const isBuilderLoading = isLoading || (!!funnel?.workspaceId && permissionsLoading);
 
   useEffect(() => {
     const handleKeydown = (event: KeyboardEvent) => {
@@ -60,10 +62,10 @@ const FunnelBuilder = () => {
   }, [canManageFunnels, saveFunnel]);
 
   useEffect(() => {
-    if (!isLoading && funnel && !canManageFunnels && !canViewFunnels) {
+    if (!isBuilderLoading && funnel && !canManageFunnels && !canViewFunnels) {
       navigate('/funnels', { replace: true });
     }
-  }, [canManageFunnels, canViewFunnels, funnel, isLoading, navigate]);
+  }, [canManageFunnels, canViewFunnels, funnel, isBuilderLoading, navigate]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     if (!canManageFunnels) return;
@@ -90,18 +92,18 @@ const FunnelBuilder = () => {
     }
   };
 
-  if (isLoading) {
+  if (isBuilderLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <Spinner className="w-8 h-8 text-primary" />
           <p className="text-muted-foreground">Loading funnel...</p>
         </div>
       </div>
     );
   }
 
-  if (!funnel && !isLoading) {
+  if (!funnel && !isBuilderLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -204,6 +206,8 @@ const FunnelBuilder = () => {
           <WidgetLibrary
             onAddWidget={(type) => addWidget(type, null)}
             onInsertTemplate={insertTemplate}
+            isCollapsed={isLibraryCollapsed}
+            onToggleCollapse={() => setIsLibraryCollapsed((current) => !current)}
           />
 
           <FunnelCanvas

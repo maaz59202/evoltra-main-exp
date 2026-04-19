@@ -113,7 +113,7 @@ export const useProjectMessages = (projectId: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [user, projectId]);
+  }, [user?.id, projectId]);
 
   const sendMessage = async (message: string) => {
     if (!user || !projectId || !message.trim()) return null;
@@ -195,11 +195,6 @@ export const useProjectMessages = (projectId: string | null) => {
   useEffect(() => {
     if (!user || !projectId) return;
 
-    // Keep message feed fresh even if realtime websocket cannot connect.
-    const fallbackInterval = window.setInterval(() => {
-      fetchMessages();
-    }, 10000);
-
     const channel = supabase
       .channel(`project-messages-${projectId}`)
       .on(
@@ -247,17 +242,12 @@ export const useProjectMessages = (projectId: string | null) => {
           });
         }
       )
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          fetchMessages();
-        }
-      });
+      .subscribe();
 
     return () => {
-      window.clearInterval(fallbackInterval);
       supabase.removeChannel(channel);
     };
-  }, [user, projectId, fetchMessages]);
+  }, [user?.id, projectId, fetchMessages]);
 
   return {
     messages,

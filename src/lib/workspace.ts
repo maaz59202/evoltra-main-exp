@@ -10,7 +10,7 @@ export const getStoredOrganizationId = () => {
 export const setStoredOrganizationId = (organizationId: string | null) => {
   if (!isBrowser) return;
 
-  if (!organizationId) {
+  if (organizationId === null) {
     window.localStorage.removeItem(ACTIVE_ORGANIZATION_STORAGE_KEY);
     return;
   }

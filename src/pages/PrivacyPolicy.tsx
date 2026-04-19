@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from '@/components/ui/icons';
 import Footer from '@/components/layout/Footer';
 
 const PrivacyPolicy = () => {

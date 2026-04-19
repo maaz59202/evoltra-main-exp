@@ -110,39 +110,6 @@ export const useSubscription = () => {
     }
   };
 
-  // Poll for subscription update after payment (retries every 2s, up to 30s)
-  const waitForSubscriptionUpdate = useCallback(async () => {
-    const maxAttempts = 15;
-    for (let i = 0; i < maxAttempts; i++) {
-      await new Promise(r => setTimeout(r, 2000));
-      
-      if (!session?.access_token) break;
-      
-      try {
-        const { data } = await supabase.functions.invoke('check-subscription', {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-        
-        if (data?.subscribed && data?.plan === 'team') {
-          setStatus({
-            subscribed: true,
-            plan: 'team',
-            productId: data.product_id ?? null,
-            subscriptionEnd: data.subscription_end ?? null,
-            cancelAtPeriodEnd: Boolean(data.cancel_at_period_end),
-            subscriptionStatus: data.subscription_status ?? null,
-            loading: false,
-            error: null,
-          });
-          return true;
-        }
-      } catch {
-        // continue polling
-      }
-    }
-    return false;
-  }, [session?.access_token]);
-
   const openCustomerPortal = async () => {
     if (!session?.access_token) {
       throw new Error('You must be logged in to manage subscription');
@@ -176,22 +143,13 @@ export const useSubscription = () => {
         error: null,
       });
     }
-  }, [user, checkSubscription]);
-
-  // Auto-refresh every 60 seconds
-  useEffect(() => {
-    if (!user) return;
-    
-    const interval = setInterval(checkSubscription, 60000);
-    return () => clearInterval(interval);
-  }, [user, checkSubscription]);
+  }, [user?.id, checkSubscription]);
 
   return {
     ...status,
     checkSubscription,
     createCheckout,
     openCustomerPortal,
-    waitForSubscriptionUpdate,
     isTeam: status.plan === 'team',
     isSolo: status.plan === 'solo',
     isPendingDowngrade: status.plan === 'team' && status.cancelAtPeriodEnd,

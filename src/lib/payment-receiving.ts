@@ -26,7 +26,7 @@ export const WALLET_PROVIDER_OPTIONS = [
 export type PaymentMethod = (typeof PAYMENT_METHOD_OPTIONS)[number]['value'];
 export type WalletProvider = (typeof WALLET_PROVIDER_OPTIONS)[number]['value'];
 
-export type PaymentReceivingDetails =
+export type PaymentReceivingMethod =
   | {
       method: 'international_bank_transfer';
       accountTitle: string;
@@ -47,6 +47,10 @@ export type PaymentReceivingDetails =
       provider: WalletProvider;
       phoneNumber: string;
     };
+
+export type PaymentReceivingDetailsPayload = {
+  methods: PaymentReceivingMethod[];
+};
 
 export type PaymentReceivingFormValues = {
   method: PaymentMethod;
@@ -242,17 +246,113 @@ export const defaultPaymentReceivingFormValues: PaymentReceivingFormValues = {
   phoneNumber: '',
 };
 
+const parsePaymentReceivingMethod = (candidate: Record<string, unknown>): PaymentReceivingMethod | null => {
+  const method = candidate.method;
+  if (method === 'international_bank_transfer') {
+    const accountTitle = typeof candidate.accountTitle === 'string' ? candidate.accountTitle : '';
+    const bankName = typeof candidate.bankName === 'string' ? candidate.bankName : '';
+    const iban = typeof candidate.iban === 'string' ? candidate.iban : '';
+    const swiftCode = typeof candidate.swiftCode === 'string' ? candidate.swiftCode : '';
+    if (accountTitle && bankName && iban && swiftCode) {
+      return {
+        method,
+        accountTitle,
+        bankName,
+        iban,
+        swiftCode,
+      };
+    }
+  }
+
+  if (method === 'pakistan_bank_transfer') {
+    const accountTitle = typeof candidate.accountTitle === 'string' ? candidate.accountTitle : '';
+    const bankName = typeof candidate.bankName === 'string' ? candidate.bankName : '';
+    const accountNumber = typeof candidate.accountNumber === 'string' ? candidate.accountNumber : '';
+    const iban = typeof candidate.iban === 'string' ? candidate.iban : '';
+    if (accountTitle && bankName && accountNumber && iban) {
+      return {
+        method,
+        accountTitle,
+        bankName,
+        accountNumber,
+        iban,
+      };
+    }
+  }
+
+  if (method === 'pakistan_mobile_wallet') {
+    const accountTitle = typeof candidate.accountTitle === 'string' ? candidate.accountTitle : '';
+    const provider =
+      candidate.provider === 'easypaisa' || candidate.provider === 'jazzcash'
+        ? candidate.provider
+        : null;
+    const phoneNumber = typeof candidate.phoneNumber === 'string' ? candidate.phoneNumber : '';
+    if (accountTitle && provider && phoneNumber) {
+      return {
+        method,
+        accountTitle,
+        provider,
+        phoneNumber,
+      };
+    }
+  }
+
+  return null;
+};
+
+export const parsePaymentReceivingDetailsCollection = (
+  source?: LegacyPaymentFields | null,
+): PaymentReceivingMethod[] => {
+  const payload = source?.payment_receiving_details;
+  const methods: PaymentReceivingMethod[] = [];
+
+  if (payload && typeof payload === 'object') {
+    if (Array.isArray(payload)) {
+      payload.forEach((entry) => {
+        if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+          const parsed = parsePaymentReceivingMethod(entry as Record<string, unknown>);
+          if (parsed && !methods.some((method) => method.method === parsed.method)) {
+            methods.push(parsed);
+          }
+        }
+      });
+    } else {
+      const candidate = payload as Record<string, unknown>;
+      if (Array.isArray(candidate.methods)) {
+        candidate.methods.forEach((entry) => {
+          if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+            const parsed = parsePaymentReceivingMethod(entry as Record<string, unknown>);
+            if (parsed && !methods.some((method) => method.method === parsed.method)) {
+              methods.push(parsed);
+            }
+          }
+        });
+      } else {
+        const parsed = parsePaymentReceivingMethod(candidate);
+        if (parsed) {
+          methods.push(parsed);
+        }
+      }
+    }
+  }
+
+  return methods;
+};
+
 export const getPaymentReceivingFormDefaults = (
   source?: LegacyPaymentFields | null,
+  preferredMethod?: PaymentMethod | null,
 ): PaymentReceivingFormValues => {
-  const stored = parsePaymentReceivingDetails(source);
+  const storedMethods = parsePaymentReceivingDetailsCollection(source);
+  const preferredStoredMethod = preferredMethod
+    ? storedMethods.find((method) => method.method === preferredMethod) || null
+    : null;
+  const stored = preferredStoredMethod || (!preferredMethod ? storedMethods[0] || null : null);
 
   if (!stored) {
     return {
       ...defaultPaymentReceivingFormValues,
-      accountTitle: source?.payment_account_name || '',
-      bankName: source?.payment_bank_name || '',
-      accountNumber: source?.payment_account_number || '',
+      method: preferredMethod || defaultPaymentReceivingFormValues.method,
     };
   }
 
@@ -289,7 +389,7 @@ export const getPaymentReceivingFormDefaults = (
 
 export const buildPaymentReceivingDetails = (
   values: PaymentReceivingFormValues,
-): PaymentReceivingDetails => {
+): PaymentReceivingMethod => {
   if (values.method === 'international_bank_transfer') {
     return {
       method: values.method,
@@ -320,65 +420,26 @@ export const buildPaymentReceivingDetails = (
 
 export const parsePaymentReceivingDetails = (
   source?: LegacyPaymentFields | null,
-): PaymentReceivingDetails | null => {
-  const payload = source?.payment_receiving_details;
-  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
-    const candidate = payload as Record<string, unknown>;
-    const method = candidate.method;
-    if (method === 'international_bank_transfer') {
-      const accountTitle = typeof candidate.accountTitle === 'string' ? candidate.accountTitle : '';
-      const bankName = typeof candidate.bankName === 'string' ? candidate.bankName : '';
-      const iban = typeof candidate.iban === 'string' ? candidate.iban : '';
-      const swiftCode = typeof candidate.swiftCode === 'string' ? candidate.swiftCode : '';
-      if (accountTitle && bankName && iban && swiftCode) {
-        return {
-          method,
-          accountTitle,
-          bankName,
-          iban,
-          swiftCode,
-        };
-      }
-    }
+): PaymentReceivingMethod | null => parsePaymentReceivingDetailsCollection(source)[0] || null;
 
-    if (method === 'pakistan_bank_transfer') {
-      const accountTitle = typeof candidate.accountTitle === 'string' ? candidate.accountTitle : '';
-      const bankName = typeof candidate.bankName === 'string' ? candidate.bankName : '';
-      const accountNumber = typeof candidate.accountNumber === 'string' ? candidate.accountNumber : '';
-      const iban = typeof candidate.iban === 'string' ? candidate.iban : '';
-      if (accountTitle && bankName && accountNumber && iban) {
-        return {
-          method,
-          accountTitle,
-          bankName,
-          accountNumber,
-          iban,
-        };
-      }
-    }
+export const upsertPaymentReceivingMethod = (
+  existingMethods: PaymentReceivingMethod[],
+  nextMethod: PaymentReceivingMethod,
+): PaymentReceivingDetailsPayload => ({
+  methods: [
+    nextMethod,
+    ...existingMethods.filter((method) => method.method !== nextMethod.method),
+  ],
+});
 
-    if (method === 'pakistan_mobile_wallet') {
-      const accountTitle = typeof candidate.accountTitle === 'string' ? candidate.accountTitle : '';
-      const provider =
-        candidate.provider === 'easypaisa' || candidate.provider === 'jazzcash'
-          ? candidate.provider
-          : null;
-      const phoneNumber = typeof candidate.phoneNumber === 'string' ? candidate.phoneNumber : '';
-      if (accountTitle && provider && phoneNumber) {
-        return {
-          method,
-          accountTitle,
-          provider,
-          phoneNumber,
-        };
-      }
-    }
-  }
+export const removePaymentReceivingMethod = (
+  existingMethods: PaymentReceivingMethod[],
+  methodToRemove: PaymentMethod,
+): PaymentReceivingDetailsPayload => ({
+  methods: existingMethods.filter((method) => method.method !== methodToRemove),
+});
 
-  return null;
-};
-
-export const toLegacyPaymentColumns = (details: PaymentReceivingDetails) => {
+export const toLegacyPaymentColumns = (details: PaymentReceivingMethod) => {
   if (details.method === 'pakistan_bank_transfer') {
     return {
       payment_account_name: details.accountTitle,
@@ -409,7 +470,7 @@ export const toLegacyPaymentColumns = (details: PaymentReceivingDetails) => {
 export const getPaymentMethodLabel = (method: PaymentMethod) =>
   PAYMENT_METHOD_OPTIONS.find((option) => option.value === method)?.label || method;
 
-export const getPaymentReceivingRows = (details: PaymentReceivingDetails) => {
+export const getPaymentReceivingRows = (details: PaymentReceivingMethod) => {
   if (details.method === 'international_bank_transfer') {
     return [
       { label: 'Payment Method', value: getPaymentMethodLabel(details.method) },
@@ -440,3 +501,10 @@ export const getPaymentReceivingRows = (details: PaymentReceivingDetails) => {
     { label: 'Wallet Number', value: details.phoneNumber },
   ];
 };
+
+export const getPaymentReceivingSections = (details: PaymentReceivingMethod[]) =>
+  details.map((methodDetails) => ({
+    key: methodDetails.method,
+    title: getPaymentMethodLabel(methodDetails.method),
+    rows: getPaymentReceivingRows(methodDetails),
+  }));

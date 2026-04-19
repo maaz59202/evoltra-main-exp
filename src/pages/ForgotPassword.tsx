@@ -1,3 +1,4 @@
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Check, Mail } from 'lucide-react';
+import {  ArrowLeft, Check, Mail } from '@/components/ui/icons';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -122,7 +123,7 @@ const ForgotPassword = () => {
               >
                 {loading ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Spinner className="w-4 h-4 mr-2" />
                     Sending...
                   </>
                 ) : (

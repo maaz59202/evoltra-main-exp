@@ -37,7 +37,7 @@ interface AuthContextType {
     fullName?: string
   ) => Promise<{ error: Error | null; data?: { user: User | null; session: Session | null } }>;
   signInWithProvider: (
-    provider: 'google' | 'github',
+    provider: 'google',
     redirectTo?: string
   ) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           null,
         avatar_url: authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || null,
       },
-      { onConflict: 'user_id', ignoreDuplicates: false }
+      { onConflict: 'user_id', ignoreDuplicates: true }
     );
 
     if (error) {
@@ -145,7 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error as Error | null, data };
   };
   //${window.location.origin}/dashboard`
-  const signInWithProvider = async (provider: 'google' | 'github', redirectTo?: string) => {
+  const signInWithProvider = async (provider: 'google', redirectTo?: string) => {
     const pendingInvite = getPendingInvite();
     const targetRedirect =
       redirectTo ||

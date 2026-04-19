@@ -1,16 +1,17 @@
-import { Widget, WidgetProps, TextWidgetProps, HeadingWidgetProps, ImageWidgetProps, ButtonWidgetProps, InputWidgetProps, FormWidgetProps, ContainerWidgetProps, SectionWidgetProps, SpacerWidgetProps } from '@/types/funnel';
+import { Widget, WidgetProps, TextWidgetProps, HeadingWidgetProps, ImageWidgetProps, ButtonWidgetProps, InputWidgetProps, FormWidgetProps, ColumnsWidgetProps, ContainerWidgetProps, SectionWidgetProps, SpacerWidgetProps } from '@/types/funnel';
 import { TextWidget } from './widgets/TextWidget';
 import { HeadingWidget } from './widgets/HeadingWidget';
 import { ImageWidget } from './widgets/ImageWidget';
 import { ButtonWidget } from './widgets/ButtonWidget';
 import { InputWidget } from './widgets/InputWidget';
 import { FormWidget } from './widgets/FormWidget';
+import { ColumnsWidget } from './widgets/ColumnsWidget';
 import { ContainerWidget } from './widgets/ContainerWidget';
 import { SectionWidget } from './widgets/SectionWidget';
 import { SpacerWidget } from './widgets/SpacerWidget';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { Trash2, Copy, GripVertical } from 'lucide-react';
+import { Trash2, Copy, GripVertical } from '@/components/ui/icons';
 
 interface WidgetRendererProps {
   widget: Widget;
@@ -68,6 +69,17 @@ export const WidgetRenderer = ({
             widgetId={widget.id}
             onSelectWidget={onSelect}
           />
+        );
+      case 'columns':
+        return (
+          <ColumnsWidget
+            id={widget.id}
+            props={widget.props as ColumnsWidgetProps}
+            isSelected={isSelected}
+            isPreview={isPreview}
+          >
+            {renderChildren(widget.id)}
+          </ColumnsWidget>
         );
       case 'container':
         return (

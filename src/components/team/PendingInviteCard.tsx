@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Mail, Clock, X, Copy, Check } from 'lucide-react';
+import { Mail, Clock, X, Copy, Check } from '@/components/ui/icons';
 import { TeamInvite } from '@/hooks/useTeamManagement';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -52,29 +52,29 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
 
   return (
     <>
-      <div className={`rounded-2xl border border-border/60 bg-background/35 px-4 py-4 ${isExpired ? 'opacity-60' : ''}`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className={`rounded-xl border border-border/50 bg-background/20 px-4 py-3 ${isExpired ? 'opacity-60' : ''}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background ring-1 ring-white/5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border/50 bg-background">
               <Mail className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 space-y-1">
-              <p className="truncate text-base font-semibold">{invite.email}</p>
+              <p className="truncate text-[15px] font-medium">{invite.email}</p>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-3 h-3" />
                 <span>{isExpired ? 'Expired' : `Expires ${expiresIn}`}</span>
               </div>
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground/80">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground/80">
                 Pending {invite.role} invite
               </p>
             </div>
           </div>
 
           <div className="flex items-center justify-between gap-2 sm:justify-end">
-            <Badge variant="outline" className="h-9 rounded-full px-3 capitalize">
+            <Badge variant="outline" className="h-8 rounded-full px-3 capitalize">
               {invite.role}
             </Badge>
-            <Badge variant={isExpired ? 'destructive' : 'secondary'} className="h-9 rounded-full px-3">
+            <Badge variant={isExpired ? 'destructive' : 'secondary'} className="h-8 rounded-full px-3">
               {isExpired ? 'Expired' : 'Pending'}
             </Badge>
 
@@ -83,7 +83,7 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full"
+                  className="h-8 w-8 rounded-lg"
                   onClick={copyInviteLink}
                   disabled={isExpired}
                 >
@@ -96,7 +96,7 @@ const PendingInviteCard = ({ invite, canManage, onCancel }: PendingInviteCardPro
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-9 w-9 rounded-full text-destructive hover:text-destructive"
+                  className="h-8 w-8 rounded-lg text-destructive hover:text-destructive"
                   onClick={() => setShowCancelDialog(true)}
                 >
                   <X className="w-4 h-4" />

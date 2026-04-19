@@ -45,7 +45,7 @@ export const useNotifications = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -111,11 +111,6 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Keep notifications fresh even when realtime websocket cannot connect.
-    const fallbackInterval = window.setInterval(() => {
-      fetchNotifications();
-    }, 30000);
-
     const channel = supabase
       .channel('notifications')
       .on(
@@ -132,19 +127,12 @@ export const useNotifications = () => {
           setUnreadCount(prev => prev + 1);
         }
       )
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          // Network/firewall can block websocket on some environments.
-          // Fallback polling keeps functionality working.
-          fetchNotifications();
-        }
-      });
+      .subscribe();
 
     return () => {
-      window.clearInterval(fallbackInterval);
       supabase.removeChannel(channel);
     };
-  }, [user, fetchNotifications]);
+  }, [user?.id, fetchNotifications]);
 
   return {
     notifications,

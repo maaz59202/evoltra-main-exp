@@ -59,7 +59,7 @@ export const useTasks = (projectId: string | null) => {
     } finally {
       setLoading(false);
     }
-  }, [user, projectId]);
+  }, [user?.id, projectId]);
 
   const createTask = async (title: string, statusOrColumnId: string = 'backlog') => {
     if (!user || !projectId) throw new Error('Must be logged in with a project selected');
