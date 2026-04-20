@@ -37,6 +37,10 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import CookiePolicy from "./pages/CookiePolicy";
 
+// Profile Pages
+import { ProfileEditor } from "./pages/ProfileEditor";
+import { PublicProfile } from "./pages/PublicProfile";
+
 // Client Portal Pages
 import ClientLogin from "./pages/client/ClientLogin";
 import ClientForgotPassword from "./pages/client/ClientForgotPassword";
@@ -199,6 +203,17 @@ const App = () => (
               />
               {/* Public Funnel Viewer */}
               <Route path="/f/:funnelId" element={<PublicFunnel />} />
+              
+              {/* Profile Routes */}
+              <Route 
+                path="/profile/edit" 
+                element={
+                  <ProtectedRoute>
+                    <ProfileEditor />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="/profile/:username" element={<PublicProfile />} />
               
               {/* Public routes */}
               <Route path="/pricing" element={<Pricing />} />
