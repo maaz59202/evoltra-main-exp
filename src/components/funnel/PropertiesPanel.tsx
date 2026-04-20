@@ -6,8 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { AlignLeft, AlignCenter, AlignRight } from '@/components/ui/icons';
+import { 
+  AlignmentButtons, 
+  FontSizeSlider, 
+  FontWeightSelect, 
+  ColorInput, 
+  TextContentArea,
+  TextInput,
+  PropertySection
+} from './PropertyControls';
 
 /**
  * PropertiesPanel Component
@@ -51,38 +58,6 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
     onUpdateProps(widget.id, { [key]: value });
   };
 
-  const AlignmentButtons = ({
-    value,
-    onChange,
-  }: {
-    value: 'left' | 'center' | 'right';
-    onChange: (value: 'left' | 'center' | 'right') => void;
-  }) => (
-    <div className="space-y-2">
-      <Label>Alignment</Label>
-      <ToggleGroup
-        type="single"
-        value={value}
-        onValueChange={(nextValue) => {
-          if (nextValue === 'left' || nextValue === 'center' || nextValue === 'right') {
-            onChange(nextValue);
-          }
-        }}
-        className="justify-start"
-      >
-        <ToggleGroupItem value="left" aria-label="Align left">
-          <AlignLeft className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="center" aria-label="Align center">
-          <AlignCenter className="h-4 w-4" />
-        </ToggleGroupItem>
-        <ToggleGroupItem value="right" aria-label="Align right">
-          <AlignRight className="h-4 w-4" />
-        </ToggleGroupItem>
-      </ToggleGroup>
-    </div>
-  );
-
   const renderProperties = () => {
     switch (widget.type) {
       case 'text': {
@@ -97,39 +72,9 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 rows={3}
               />
             </div>
-            <div className="space-y-2">
-              <Label>Font Size ({props.fontSize}px)</Label>
-              <Slider
-                value={[props.fontSize]}
-                onValueChange={([v]) => updateProp('fontSize', v)}
-                min={12}
-                max={48}
-                step={1}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Font Weight</Label>
-              <Select value={props.fontWeight} onValueChange={(v) => updateProp('fontWeight', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="normal">Normal</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="semibold">Semibold</SelectItem>
-                  <SelectItem value="bold">Bold</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <Input
-                type="color"
-                value={props.color}
-                onChange={(e) => updateProp('color', e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
+            <FontSizeSlider value={props.fontSize} onChange={(v) => updateProp('fontSize', v)} min={12} max={48} />
+            <FontWeightSelect value={props.fontWeight} onChange={(v) => updateProp('fontWeight', v)} />
+            <ColorInput value={props.color} onChange={(v) => updateProp('color', v)} />
             <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
           </>
         );
@@ -139,13 +84,11 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
         const props = widget.props as HeadingWidgetProps;
         return (
           <>
-            <div className="space-y-2">
-              <Label>Content</Label>
-              <Input
-                value={props.content}
-                onChange={(e) => updateProp('content', e.target.value)}
-              />
-            </div>
+            <TextInput 
+              label="Content"
+              value={props.content}
+              onChange={(e) => updateProp('content', e)}
+            />
             <div className="space-y-2">
               <Label>Level</Label>
               <Select value={props.level} onValueChange={(v) => updateProp('level', v)}>
@@ -159,25 +102,8 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Font Size ({props.fontSize}px)</Label>
-              <Slider
-                value={[props.fontSize]}
-                onValueChange={([v]) => updateProp('fontSize', v)}
-                min={16}
-                max={72}
-                step={1}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Color</Label>
-              <Input
-                type="color"
-                value={props.color}
-                onChange={(e) => updateProp('color', e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
+            <FontSizeSlider value={props.fontSize} onChange={(v) => updateProp('fontSize', v)} min={16} max={72} />
+            <ColorInput value={props.color} onChange={(v) => updateProp('color', v)} />
             <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
           </>
         );

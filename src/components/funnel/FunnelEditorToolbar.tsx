@@ -6,11 +6,7 @@ import {
   ExternalLink,
   Eye,
   Globe,
-  
-  Monitor,
   Save,
-  Smartphone,
-  Tablet,
   Wand2,
   X,
 } from '@/components/ui/icons';
@@ -20,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DevicePreview, Funnel } from '@/types/funnel';
 import { cn } from '@/lib/utils';
+import { DeviceSwitcher } from './DeviceSwitcher';
 
 /**
  * FunnelEditorToolbar Component
@@ -136,32 +133,7 @@ export const FunnelEditorToolbar = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-muted/40 p-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn('h-9 w-9 rounded-xl', devicePreview === 'desktop' && 'bg-background shadow-sm')}
-            onClick={() => onDeviceChange('desktop')}
-          >
-            <Monitor className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn('h-9 w-9 rounded-xl', devicePreview === 'tablet' && 'bg-background shadow-sm')}
-            onClick={() => onDeviceChange('tablet')}
-          >
-            <Tablet className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn('h-9 w-9 rounded-xl', devicePreview === 'mobile' && 'bg-background shadow-sm')}
-            onClick={() => onDeviceChange('mobile')}
-          >
-            <Smartphone className="w-4 h-4" />
-          </Button>
-        </div>
+        <DeviceSwitcher devicePreview={devicePreview} onChange={onDeviceChange} />
 
         <div className="flex items-center gap-2">
           {funnel?.status === 'published' && funnel?.publishedUrl && (
