@@ -13,7 +13,14 @@ import {
   ColorInput, 
   TextContentArea,
   TextInput,
-  PropertySection
+  PropertySection,
+  OpacityControl,
+  LineHeightControl,
+  LetterSpacingControl,
+  BorderWidthControl,
+  BorderColorInput,
+  BorderStyleSelect,
+  ShadowControl
 } from './PropertyControls';
 
 /**
@@ -72,10 +79,17 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 rows={3}
               />
             </div>
-            <FontSizeSlider value={props.fontSize} onChange={(v) => updateProp('fontSize', v)} min={12} max={48} />
-            <FontWeightSelect value={props.fontWeight} onChange={(v) => updateProp('fontWeight', v)} />
-            <ColorInput value={props.color} onChange={(v) => updateProp('color', v)} />
-            <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
+            <PropertySection title="Typography">
+              <FontSizeSlider value={props.fontSize} onChange={(v) => updateProp('fontSize', v)} min={12} max={48} />
+              <FontWeightSelect value={props.fontWeight} onChange={(v) => updateProp('fontWeight', v)} />
+              <LineHeightControl value={props.lineHeight ?? 14} onChange={(v) => updateProp('lineHeight', v)} />
+              <LetterSpacingControl value={props.letterSpacing ?? 0} onChange={(v) => updateProp('letterSpacing', v)} />
+            </PropertySection>
+            <PropertySection title="Appearance">
+              <ColorInput value={props.color} onChange={(v) => updateProp('color', v)} />
+              <OpacityControl value={props.opacity ?? 1} onChange={(v) => updateProp('opacity', v)} />
+              <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
+            </PropertySection>
           </>
         );
       }
@@ -102,9 +116,16 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
                 </SelectContent>
               </Select>
             </div>
-            <FontSizeSlider value={props.fontSize} onChange={(v) => updateProp('fontSize', v)} min={16} max={72} />
-            <ColorInput value={props.color} onChange={(v) => updateProp('color', v)} />
-            <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
+            <PropertySection title="Typography">
+              <FontSizeSlider value={props.fontSize} onChange={(v) => updateProp('fontSize', v)} min={16} max={72} />
+              <LineHeightControl value={props.lineHeight ?? 16} onChange={(v) => updateProp('lineHeight', v)} />
+              <LetterSpacingControl value={props.letterSpacing ?? 0} onChange={(v) => updateProp('letterSpacing', v)} />
+            </PropertySection>
+            <PropertySection title="Appearance">
+              <ColorInput value={props.color} onChange={(v) => updateProp('color', v)} />
+              <OpacityControl value={props.opacity ?? 1} onChange={(v) => updateProp('opacity', v)} />
+              <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
+            </PropertySection>
           </>
         );
       }
@@ -125,60 +146,71 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
         
         return (
           <>
-            <div className="space-y-2">
-              <Label>Upload Image</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="cursor-pointer"
-              />
-              <p className="text-xs text-muted-foreground">
-                Or enter a URL below
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input
-                value={props.src}
-                onChange={(e) => updateProp('src', e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Alt Text</Label>
-              <Input
-                value={props.alt}
-                onChange={(e) => updateProp('alt', e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Width</Label>
-              <Input
-                value={props.width}
-                onChange={(e) => updateProp('width', e.target.value)}
-                placeholder="100% or 300px"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Height</Label>
-              <Input
-                value={props.height}
-                onChange={(e) => updateProp('height', e.target.value)}
-                placeholder="auto or 200px"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Border Radius ({props.borderRadius}px)</Label>
-              <Slider
-                value={[props.borderRadius]}
-                onValueChange={([v]) => updateProp('borderRadius', v)}
-                min={0}
-                max={32}
-                step={1}
-              />
-            </div>
-            <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
+            <PropertySection title="Image Source">
+              <div className="space-y-2">
+                <Label>Upload Image</Label>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Or enter a URL below
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Image URL</Label>
+                <Input
+                  value={props.src}
+                  onChange={(e) => updateProp('src', e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Alt Text</Label>
+                <Input
+                  value={props.alt}
+                  onChange={(e) => updateProp('alt', e.target.value)}
+                />
+              </div>
+            </PropertySection>
+            <PropertySection title="Size & Layout">
+              <div className="space-y-2">
+                <Label>Width</Label>
+                <Input
+                  value={props.width}
+                  onChange={(e) => updateProp('width', e.target.value)}
+                  placeholder="100% or 300px"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Height</Label>
+                <Input
+                  value={props.height}
+                  onChange={(e) => updateProp('height', e.target.value)}
+                  placeholder="auto or 200px"
+                />
+              </div>
+              <AlignmentButtons value={props.alignment} onChange={(value) => updateProp('alignment', value)} />
+            </PropertySection>
+            <PropertySection title="Styling">
+              <div className="space-y-2">
+                <Label>Border Radius ({props.borderRadius}px)</Label>
+                <Slider
+                  value={[props.borderRadius]}
+                  onValueChange={([v]) => updateProp('borderRadius', v)}
+                  min={0}
+                  max={32}
+                  step={1}
+                />
+              </div>
+              <BorderWidthControl value={props.borderWidth ?? 0} onChange={(v) => updateProp('borderWidth', v)} />
+              <BorderColorInput value={props.borderColor ?? '#000000'} onChange={(v) => updateProp('borderColor', v)} />
+              <BorderStyleSelect value={props.borderStyle ?? 'solid'} onChange={(v) => updateProp('borderStyle', v)} />
+              <ShadowControl value={props.shadowBlur ?? 0} onChange={(v) => updateProp('shadowBlur', v)} />
+              <OpacityControl value={props.opacity ?? 1} onChange={(v) => updateProp('opacity', v)} />
+            </PropertySection>
           </>
         );
       }
@@ -187,56 +219,84 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
         const props = widget.props as ButtonWidgetProps;
         return (
           <>
-            <div className="space-y-2">
-              <Label>Button Text</Label>
-              <Input
-                value={props.text}
-                onChange={(e) => updateProp('text', e.target.value)}
+            <PropertySection title="Button Content">
+              <div className="space-y-2">
+                <Label>Button Text</Label>
+                <Input
+                  value={props.text}
+                  onChange={(e) => updateProp('text', e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Link URL</Label>
+                <Input
+                  value={props.url}
+                  onChange={(e) => updateProp('url', e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+            </PropertySection>
+            <PropertySection title="Style">
+              <div className="space-y-2">
+                <Label>Button Variant</Label>
+                <Select value={props.variant} onValueChange={(v) => updateProp('variant', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="primary">Primary</SelectItem>
+                    <SelectItem value="secondary">Secondary</SelectItem>
+                    <SelectItem value="outline">Outline</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Background Color</Label>
+                <Input
+                  type="color"
+                  value={props.backgroundColor}
+                  onChange={(e) => updateProp('backgroundColor', e.target.value)}
+                  className="h-10 p-1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Text Color</Label>
+                <Input
+                  type="color"
+                  value={props.textColor}
+                  onChange={(e) => updateProp('textColor', e.target.value)}
+                  className="h-10 p-1"
+                />
+              </div>
+            </PropertySection>
+            <PropertySection title="Appearance">
+              <div className="space-y-2">
+                <Label>Border Radius ({props.borderRadius ?? 8}px)</Label>
+                <Slider
+                  value={[props.borderRadius ?? 8]}
+                  onValueChange={([v]) => updateProp('borderRadius', v)}
+                  min={0}
+                  max={32}
+                  step={1}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Padding ({props.padding ?? 12}px)</Label>
+                <Slider
+                  value={[props.padding ?? 12]}
+                  onValueChange={([v]) => updateProp('padding', v)}
+                  min={0}
+                  max={32}
+                  step={1}
+                />
+              </div>
+              <ShadowControl value={props.shadowBlur ?? 0} onChange={(v) => updateProp('shadowBlur', v)} />
+              <OpacityControl value={props.opacity ?? 1} onChange={(v) => updateProp('opacity', v)} />
+              <AlignmentButtons
+                value={props.alignment ?? 'left'}
+                onChange={(value) => updateProp('alignment', value)}
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Link URL</Label>
-              <Input
-                value={props.url}
-                onChange={(e) => updateProp('url', e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Style</Label>
-              <Select value={props.variant} onValueChange={(v) => updateProp('variant', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="primary">Primary</SelectItem>
-                  <SelectItem value="secondary">Secondary</SelectItem>
-                  <SelectItem value="outline">Outline</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Background Color</Label>
-              <Input
-                type="color"
-                value={props.backgroundColor}
-                onChange={(e) => updateProp('backgroundColor', e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Text Color</Label>
-              <Input
-                type="color"
-                value={props.textColor}
-                onChange={(e) => updateProp('textColor', e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
-            <AlignmentButtons
-              value={props.alignment ?? 'left'}
-              onChange={(value) => updateProp('alignment', value)}
-            />
+            </PropertySection>
           </>
         );
       }
@@ -310,88 +370,99 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
         const props = widget.props as ColumnsWidgetProps;
         return (
           <>
-            <div className="space-y-2">
-              <Label>Columns</Label>
-              <Select value={String(props.columns)} onValueChange={(v) => updateProp('columns', Number(v))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2">2 columns</SelectItem>
-                  <SelectItem value="3">3 columns</SelectItem>
-                  <SelectItem value="4">4 columns</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Gap ({props.gap}px)</Label>
-              <Slider
-                value={[props.gap]}
-                onValueChange={([v]) => updateProp('gap', v)}
-                min={8}
-                max={48}
-                step={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Inner Padding ({props.padding}px)</Label>
-              <Slider
-                value={[props.padding]}
-                onValueChange={([v]) => updateProp('padding', v)}
-                min={0}
-                max={48}
-                step={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Outer Margin ({props.margin}px)</Label>
-              <Slider
-                value={[props.margin]}
-                onValueChange={([v]) => updateProp('margin', v)}
-                min={0}
-                max={64}
-                step={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Background Color</Label>
-              <Input
-                type="color"
-                value={props.backgroundColor === 'transparent' ? '#ffffff' : props.backgroundColor}
-                onChange={(e) => updateProp('backgroundColor', e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Border Radius ({props.borderRadius}px)</Label>
-              <Slider
-                value={[props.borderRadius]}
-                onValueChange={([v]) => updateProp('borderRadius', v)}
-                min={0}
-                max={32}
-                step={1}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Vertical Align</Label>
-              <Select value={props.verticalAlign} onValueChange={(v) => updateProp('verticalAlign', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="start">Top</SelectItem>
-                  <SelectItem value="center">Center</SelectItem>
-                  <SelectItem value="end">Bottom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Stack on Mobile</Label>
-              <Switch
-                checked={props.stackOnMobile}
-                onCheckedChange={(v) => updateProp('stackOnMobile', v)}
-              />
-            </div>
+            <PropertySection title="Layout">
+              <div className="space-y-2">
+                <Label>Columns</Label>
+                <Select value={String(props.columns)} onValueChange={(v) => updateProp('columns', Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="2">2 columns</SelectItem>
+                    <SelectItem value="3">3 columns</SelectItem>
+                    <SelectItem value="4">4 columns</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Gap ({props.gap}px)</Label>
+                <Slider
+                  value={[props.gap]}
+                  onValueChange={([v]) => updateProp('gap', v)}
+                  min={8}
+                  max={48}
+                  step={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Vertical Align</Label>
+                <Select value={props.verticalAlign} onValueChange={(v) => updateProp('verticalAlign', v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="start">Top</SelectItem>
+                    <SelectItem value="center">Center</SelectItem>
+                    <SelectItem value="end">Bottom</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label>Stack on Mobile</Label>
+                <Switch
+                  checked={props.stackOnMobile}
+                  onCheckedChange={(v) => updateProp('stackOnMobile', v)}
+                />
+              </div>
+            </PropertySection>
+            <PropertySection title="Spacing">
+              <div className="space-y-2">
+                <Label>Inner Padding ({props.padding}px)</Label>
+                <Slider
+                  value={[props.padding]}
+                  onValueChange={([v]) => updateProp('padding', v)}
+                  min={0}
+                  max={48}
+                  step={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Outer Margin ({props.margin}px)</Label>
+                <Slider
+                  value={[props.margin]}
+                  onValueChange={([v]) => updateProp('margin', v)}
+                  min={0}
+                  max={64}
+                  step={4}
+                />
+              </div>
+            </PropertySection>
+            <PropertySection title="Appearance">
+              <div className="space-y-2">
+                <Label>Background Color</Label>
+                <Input
+                  type="color"
+                  value={props.backgroundColor === 'transparent' ? '#ffffff' : props.backgroundColor}
+                  onChange={(e) => updateProp('backgroundColor', e.target.value)}
+                  className="h-10 p-1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Border Radius ({props.borderRadius}px)</Label>
+                <Slider
+                  value={[props.borderRadius]}
+                  onValueChange={([v]) => updateProp('borderRadius', v)}
+                  min={0}
+                  max={32}
+                  step={1}
+                />
+              </div>
+              <BorderWidthControl value={props.borderWidth ?? 0} onChange={(v) => updateProp('borderWidth', v)} />
+              <BorderColorInput value={props.borderColor ?? '#000000'} onChange={(v) => updateProp('borderColor', v)} />
+              <BorderStyleSelect value={props.borderStyle ?? 'solid'} onChange={(v) => updateProp('borderStyle', v)} />
+              <ShadowControl value={props.shadowBlur ?? 0} onChange={(v) => updateProp('shadowBlur', v)} />
+              <OpacityControl value={props.opacity ?? 1} onChange={(v) => updateProp('opacity', v)} />
+            </PropertySection>
           </>
         );
       }
@@ -400,45 +471,54 @@ export const PropertiesPanel = ({ widget, onUpdateProps }: PropertiesPanelProps)
         const props = widget.props as ContainerWidgetProps;
         return (
           <>
-            <div className="space-y-2">
-              <Label>Padding ({props.padding}px)</Label>
-              <Slider
-                value={[props.padding]}
-                onValueChange={([v]) => updateProp('padding', v)}
-                min={0}
-                max={64}
-                step={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Margin ({props.margin}px)</Label>
-              <Slider
-                value={[props.margin]}
-                onValueChange={([v]) => updateProp('margin', v)}
-                min={0}
-                max={64}
-                step={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Background Color</Label>
-              <Input
-                type="color"
-                value={props.backgroundColor === 'transparent' ? '#ffffff' : props.backgroundColor}
-                onChange={(e) => updateProp('backgroundColor', e.target.value)}
-                className="h-10 p-1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Border Radius ({props.borderRadius}px)</Label>
-              <Slider
-                value={[props.borderRadius]}
-                onValueChange={([v]) => updateProp('borderRadius', v)}
-                min={0}
-                max={32}
-                step={1}
-              />
-            </div>
+            <PropertySection title="Spacing">
+              <div className="space-y-2">
+                <Label>Padding ({props.padding}px)</Label>
+                <Slider
+                  value={[props.padding]}
+                  onValueChange={([v]) => updateProp('padding', v)}
+                  min={0}
+                  max={64}
+                  step={4}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Margin ({props.margin}px)</Label>
+                <Slider
+                  value={[props.margin]}
+                  onValueChange={([v]) => updateProp('margin', v)}
+                  min={0}
+                  max={64}
+                  step={4}
+                />
+              </div>
+            </PropertySection>
+            <PropertySection title="Appearance">
+              <div className="space-y-2">
+                <Label>Background Color</Label>
+                <Input
+                  type="color"
+                  value={props.backgroundColor === 'transparent' ? '#ffffff' : props.backgroundColor}
+                  onChange={(e) => updateProp('backgroundColor', e.target.value)}
+                  className="h-10 p-1"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Border Radius ({props.borderRadius}px)</Label>
+                <Slider
+                  value={[props.borderRadius]}
+                  onValueChange={([v]) => updateProp('borderRadius', v)}
+                  min={0}
+                  max={32}
+                  step={1}
+                />
+              </div>
+              <BorderWidthControl value={props.borderWidth ?? 0} onChange={(v) => updateProp('borderWidth', v)} />
+              <BorderColorInput value={props.borderColor ?? '#000000'} onChange={(v) => updateProp('borderColor', v)} />
+              <BorderStyleSelect value={props.borderStyle ?? 'solid'} onChange={(v) => updateProp('borderStyle', v)} />
+              <ShadowControl value={props.shadowBlur ?? 0} onChange={(v) => updateProp('shadowBlur', v)} />
+              <OpacityControl value={props.opacity ?? 1} onChange={(v) => updateProp('opacity', v)} />
+            </PropertySection>
           </>
         );
       }

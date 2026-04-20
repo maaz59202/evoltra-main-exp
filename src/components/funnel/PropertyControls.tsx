@@ -150,3 +150,127 @@ export const PropertySection = ({
     {children}
   </div>
 );
+
+export const OpacityControl = ({
+  value,
+  onChange,
+  label = 'Opacity',
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>
+      {label} ({Math.round(value * 100)}%)
+    </Label>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={0} max={1} step={0.05} />
+  </div>
+);
+
+export const BorderWidthControl = ({
+  value,
+  onChange,
+  label = 'Border Width',
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>
+      {label} ({value}px)
+    </Label>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={0} max={8} step={1} />
+  </div>
+);
+
+export const BorderColorInput = ({
+  value,
+  onChange,
+  label = 'Border Color',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>{label}</Label>
+    <Input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="h-10 p-1" />
+  </div>
+);
+
+export const BorderStyleSelect = ({
+  value,
+  onChange,
+  label = 'Border Style',
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>{label}</Label>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="solid">Solid</SelectItem>
+        <SelectItem value="dashed">Dashed</SelectItem>
+        <SelectItem value="dotted">Dotted</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+export const ShadowControl = ({
+  value,
+  onChange,
+  label = 'Shadow',
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>
+      {label} ({value > 0 ? `Blur ${value}px` : 'None'})
+    </Label>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={0} max={20} step={1} />
+  </div>
+);
+
+export const LineHeightControl = ({
+  value,
+  onChange,
+  label = 'Line Height',
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>
+      {label} ({(value / 10).toFixed(1)})
+    </Label>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={10} max={30} step={1} />
+  </div>
+);
+
+export const LetterSpacingControl = ({
+  value,
+  onChange,
+  label = 'Letter Spacing',
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  label?: string;
+}) => (
+  <div className="space-y-2">
+    <Label>
+      {label} ({value}px)
+    </Label>
+    <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={-1} max={5} step={0.5} />
+  </div>
+);

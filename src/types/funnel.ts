@@ -25,6 +25,9 @@ export interface TextWidgetProps {
   fontWeight: 'normal' | 'medium' | 'semibold' | 'bold';
   color: string;
   alignment: 'left' | 'center' | 'right';
+  lineHeight?: number;
+  letterSpacing?: number;
+  opacity?: number;
 }
 
 export interface HeadingWidgetProps {
@@ -33,6 +36,9 @@ export interface HeadingWidgetProps {
   fontSize: number;
   color: string;
   alignment: 'left' | 'center' | 'right';
+  lineHeight?: number;
+  letterSpacing?: number;
+  opacity?: number;
 }
 
 export interface ImageWidgetProps {
@@ -42,6 +48,11 @@ export interface ImageWidgetProps {
   height: string;
   borderRadius: number;
   alignment: 'left' | 'center' | 'right';
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  shadowBlur?: number;
+  opacity?: number;
 }
 
 export interface ButtonWidgetProps {
@@ -52,6 +63,10 @@ export interface ButtonWidgetProps {
   textColor: string;
   alignment?: 'left' | 'center' | 'right';
   icon?: string;
+  borderRadius?: number;
+  shadowBlur?: number;
+  opacity?: number;
+  padding?: number;
 }
 
 export interface InputWidgetProps {
@@ -72,6 +87,11 @@ export interface ContainerWidgetProps {
   margin: number;
   backgroundColor: string;
   borderRadius: number;
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  shadowBlur?: number;
+  opacity?: number;
 }
 
 export interface ColumnsWidgetProps {
@@ -83,6 +103,11 @@ export interface ColumnsWidgetProps {
   borderRadius: number;
   stackOnMobile: boolean;
   verticalAlign: 'start' | 'center' | 'end';
+  borderWidth?: number;
+  borderColor?: string;
+  borderStyle?: 'solid' | 'dashed' | 'dotted';
+  shadowBlur?: number;
+  opacity?: number;
 }
 
 export interface SectionWidgetProps {
