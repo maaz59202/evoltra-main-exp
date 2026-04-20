@@ -13,6 +13,38 @@ import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { Trash2, Copy, GripVertical } from '@/components/ui/icons';
 
+/**
+ * WidgetRenderer Component
+ * 
+ * Renders individual widgets with edit controls and visual feedback.
+ * Wraps each widget type with:
+ * - Drag handle (grip icon) for reordering
+ * - Delete button (trash icon)
+ * - Duplicate button (copy icon)
+ * - Selection border/highlight when selected
+ * - Hover state with action buttons
+ * 
+ * Features:
+ * - Recursive rendering for nested widgets (containers, columns, sections)
+ * - Drag-and-drop support: reorder within parent or move to different container
+ * - Type-specific widget rendering: dispatches to TextWidget, HeadingWidget, etc.
+ * - Preview mode: disables drag, selection, and action buttons
+ * - Visual feedback: selected widgets show primary border and highlight
+ * 
+ * Widget hierarchy:
+ * - root widgets (parentId: null) are children of canvas
+ * - nested widgets (parentId: container/section/column ID) are rendered recursively
+ * 
+ * Props:
+ * - widget: The widget object to render
+ * - childWidgets: Array of direct children (for containers/sections/columns)
+ * - renderChildren: Function to recursively render children
+ * - isSelected: Whether this widget is currently selected
+ * - isPreview: Read-only preview mode
+ * - onSelect: Callback when widget is clicked
+ * - onDelete: Callback for delete button
+ * - onDuplicate: Callback for duplicate button
+ */
 interface WidgetRendererProps {
   widget: Widget;
   childWidgets: Widget[];

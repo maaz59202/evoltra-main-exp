@@ -21,6 +21,44 @@ import { Input } from '@/components/ui/input';
 import { DevicePreview, Funnel } from '@/types/funnel';
 import { cn } from '@/lib/utils';
 
+/**
+ * FunnelEditorToolbar Component
+ * 
+ * Top toolbar with funnel controls and status indicators.
+ * 
+ * Features:
+ * - Funnel name: Inline editable text input
+ * - Save status indicator:
+ *   - Dot (unsaved changes pending)
+ *   - Spinner (currently saving)
+ *   - Checkmark + timestamp (last saved time)
+ * - Device preview switcher (desktop, tablet, mobile icons)
+ *   - Shows selected device with highlight
+ *   - Updates canvas width responsively
+ * - View Live button: Opens published funnel in new tab
+ * - Preview button: Opens full-screen preview modal
+ * - Save button: Manual save trigger (disabled unless isDirty)
+ * - Publish/Unpublish button: Toggles funnel status
+ *   - Draft mode: "Publish" button (primary)
+ *   - Published mode: "Unpublish" button (destructive)
+ * 
+ * Layout:
+ * Left: Back button + funnel name + save status
+ * Center: Device switcher group
+ * Right: View live + Preview + Save + Publish buttons
+ * 
+ * Props:
+ * - funnel: Current funnel object
+ * - devicePreview: Current preview mode
+ * - isDirty: Has unsaved changes
+ * - isSaving: Currently saving to backend
+ * - lastSavedAt: Timestamp of last successful save
+ * - onDeviceChange: Callback for device switcher
+ * - onNameChange: Callback for name input changes
+ * - onSave: Callback for manual save
+ * - onPreview: Callback for preview modal
+ * - onTogglePublish: Callback for publish toggle
+ */
 interface FunnelEditorToolbarProps {
   funnel: Funnel | null;
   devicePreview: DevicePreview;

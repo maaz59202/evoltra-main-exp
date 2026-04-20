@@ -9,6 +9,28 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { AlignLeft, AlignCenter, AlignRight } from '@/components/ui/icons';
 
+/**
+ * PropertiesPanel Component
+ * 
+ * Right-side panel for editing properties of the selected widget.
+ * Displays widget-specific controls (font size, color, content, etc).
+ * 
+ * Features:
+ * - Context-aware property rendering based on widget type
+ * - Font controls: size (slider), weight (select), color (color picker)
+ * - Text alignment buttons (left, center, right)
+ * - Layout controls: padding, margin, gap, columns
+ * - Background controls: solid color, gradient, image
+ * - Responsive controls for mobile-specific behavior
+ * 
+ * When no widget is selected: shows placeholder "Select a widget to edit..."
+ * 
+ * Supported widget types:
+ * - text, heading, image, button, input, form
+ * - columns, container, section, spacer
+ * 
+ * Each widget type has its own property editor sub-component.
+ */
 interface PropertiesPanelProps {
   widget: Widget | null;
   onUpdateProps: (widgetId: string, props: Partial<WidgetProps>) => void;

@@ -4,6 +4,32 @@ import { DevicePreview, Widget } from '@/types/funnel';
 import { cn } from '@/lib/utils';
 import { WidgetRenderer } from './WidgetRenderer';
 
+/**
+ * FunnelCanvas Component
+ * 
+ * Responsive canvas container for rendering and editing funnel widgets.
+ * Supports drag-and-drop (dnd-kit) for adding new widgets or reordering.
+ * 
+ * Features:
+ * - Responsive device widths (mobile: 375px, tablet: 768px, desktop: 100%)
+ * - Visual feedback on hover/drag (bg-primary/5)
+ * - Empty state with template and quick-add buttons
+ * - Recursive widget rendering with nesting support
+ * - Click-to-deselect (clicking empty canvas deselects all widgets)
+ * - Preview mode (read-only) for viewing published funnels
+ * 
+ * Props:
+ * - widgets: Root-level widgets to render
+ * - selectedWidgetId: ID of currently selected widget (for highlighting)
+ * - devicePreview: Preview mode (desktop, tablet, mobile)
+ * - isPreview: Read-only mode (no drag/drop, no selection)
+ * - getChildWidgets: Function to fetch children of a parent widget
+ * - onSelectWidget: Callback when widget is clicked
+ * - onDeleteWidget: Callback when widget delete is triggered
+ * - onDuplicateWidget: Callback when widget duplicate is triggered
+ * - onQuickAdd: Callback for quick-add button in empty state
+ * - onQuickTemplate: Callback for template insertion button in empty state
+ */
 interface FunnelCanvasProps {
   widgets: Widget[];
   selectedWidgetId: string | null;

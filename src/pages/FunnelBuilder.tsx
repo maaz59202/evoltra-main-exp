@@ -13,6 +13,24 @@ import { useFunnelEditor } from '@/hooks/useFunnelEditor';
 import { useOrganizationPermissions } from '@/hooks/useOrganizationPermissions';
 import { WidgetType } from '@/types/funnel';
 
+/**
+ * FunnelBuilder Page
+ * 
+ * Main editor for creating and editing funnels with drag-and-drop interface.
+ * Features:
+ * - Drag-and-drop widget library to canvas
+ * - Real-time property editing via right panel
+ * - Device preview (desktop, tablet, mobile)
+ * - Auto-save with 30-second interval
+ * - Template quick-insert options
+ * - Permission-based access control
+ * 
+ * Layout:
+ * 1. Toolbar: Funnel name, save status, device switcher, publish button
+ * 2. Left sidebar: Widget library (draggable items and templates)
+ * 3. Center canvas: Drag-drop area with preview of funnel blocks
+ * 4. Right panel: Property editor for selected widget
+ */
 const FunnelBuilder = () => {
   const { funnelId } = useParams();
   const navigate = useNavigate();

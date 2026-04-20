@@ -158,9 +158,9 @@ export const ProfileEditor: React.FC = () => {
       </div>
 
       {/* Main layout: sidebar + preview */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Left sidebar: form inputs */}
-        <div className="w-full max-w-sm border-r border-border/60 bg-background/70 overflow-y-auto">
+        <div className="w-full lg:w-96 border-b lg:border-b-0 lg:border-r border-border/60 bg-background/70 overflow-y-auto">
           <ProfileEditorSidebar
             displayName={profile.displayName}
             bio={profile.bio}
@@ -181,7 +181,7 @@ export const ProfileEditor: React.FC = () => {
         </div>
 
         {/* Right panel: live mobile preview */}
-        <div className="flex-1 bg-muted/30 overflow-auto">
+        <div className="flex-1 bg-muted/30 overflow-auto hidden lg:flex lg:items-start lg:justify-center">
           <ProfilePreview
             displayName={profile.displayName}
             bio={profile.bio}

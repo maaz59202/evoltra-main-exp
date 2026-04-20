@@ -24,16 +24,11 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({
   const bgClass = isPhone ? 'bg-background shadow-lg rounded-2xl' : 'bg-background';
 
   return (
-    <div className="flex items-start justify-center p-6 bg-muted/30 overflow-auto h-full">
+    <div className="flex items-start justify-center p-4 md:p-6 bg-muted/30 overflow-auto h-full">
       <div className={`${containerWidth} flex flex-col`}>
         {/* Phone frame (if mobile preview) */}
         {isPhone && (
           <div className={`${bgClass} flex flex-col overflow-hidden`}>
-            {/* Phone notch/top bar */}
-            <div className="h-7 bg-foreground flex items-center justify-center rounded-b-2xl">
-              <div className="w-32 h-5 bg-background rounded-full"></div>
-            </div>
-
             {/* Profile content */}
             <div className="flex-1 flex flex-col items-center justify-start p-8 overflow-auto">
               {/* Avatar */}

@@ -22,6 +22,34 @@ import { FunnelTemplatePreset } from '@/hooks/useFunnelEditor';
 import { WidgetType } from '@/types/funnel';
 import { cn } from '@/lib/utils';
 
+/**
+ * WidgetLibrary Component
+ * 
+ * Left sidebar containing draggable widgets and template presets.
+ * Supports collapsible state to maximize canvas space.
+ * 
+ * Two display modes:
+ * 1. Expanded (320px): Shows cards with descriptions, icons, quick-add buttons
+ * 2. Collapsed (76px): Shows compact icon-only buttons with tooltips
+ * 
+ * Features:
+ * - Drag-and-drop widgets from library to canvas (via dnd-kit)
+ * - Quick-add buttons (+ icon) for direct insertion without dragging
+ * - Template presets (hero, lead capture, CTA, thank you) for common sections
+ * - Visual hover feedback (border, shadow, color changes)
+ * - Cursor feedback (grab/grabbing icons)
+ * 
+ * Available widgets:
+ * - Content: text, heading, image
+ * - Forms: input, form, button
+ * - Layout: section, container, columns, spacer
+ * 
+ * Available templates:
+ * - hero: Headline + subtext + CTA
+ * - leadCapture: Form with name/email fields
+ * - cta: Dark container with heading and button
+ * - thankYou: Light section with confirmation message
+ */
 interface WidgetItemProps {
   type: WidgetType;
   label: string;

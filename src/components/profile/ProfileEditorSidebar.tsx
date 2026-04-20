@@ -51,7 +51,7 @@ export const ProfileEditorSidebar: React.FC<ProfileEditorSidebarProps> = ({
   const maxLinks = 20;
 
   return (
-    <div className="w-full max-w-sm flex flex-col gap-8 overflow-y-auto p-6 bg-background/50">
+    <div className="w-full flex flex-col gap-6 md:gap-8 overflow-y-auto p-4 md:p-6 bg-background/50">
       {/* Avatar Section */}
       <div className="space-y-4">
         <Label className="text-base font-semibold">Profile Picture</Label>
@@ -82,7 +82,7 @@ export const ProfileEditorSidebar: React.FC<ProfileEditorSidebarProps> = ({
                 variant="outline" 
                 size="sm" 
                 asChild 
-                className="w-full cursor-pointer"
+                className="w-full cursor-pointer font-medium"
                 disabled={isSaving}
               >
                 <span>
@@ -97,6 +97,7 @@ export const ProfileEditorSidebar: React.FC<ProfileEditorSidebarProps> = ({
                 size="sm"
                 onClick={() => onAvatarChange(null)}
                 disabled={isSaving}
+                className="font-medium"
               >
                 Remove
               </Button>
@@ -207,7 +208,7 @@ export const ProfileEditorSidebar: React.FC<ProfileEditorSidebarProps> = ({
             size="sm"
             onClick={onLinkAdd}
             disabled={isSaving}
-            className="w-full"
+            className="w-full font-medium"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Link
@@ -222,12 +223,12 @@ export const ProfileEditorSidebar: React.FC<ProfileEditorSidebarProps> = ({
       </div>
 
       {/* Publish Section */}
-      <div className="pt-4 border-t border-border/50 space-y-3">
+      <div className="pt-4 md:pt-6 border-t border-border/50 space-y-3">
         <Label className="text-base font-semibold">Publish</Label>
         <Button
           onClick={onPublishToggle}
           disabled={isSaving}
-          className="w-full"
+          className="w-full font-medium py-2"
           variant={isPublished ? 'default' : 'outline'}
         >
           {isPublished ? '✓ Published' : 'Publish Profile'}
